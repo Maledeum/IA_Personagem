@@ -1,33 +1,44 @@
+import os
 import json
 import requests
-
-from core.memoria import carregar_memoria, salvar_memoria
-from core.contexto import montar_contexto
-from core.resumo import gerar_resumo_com_ia
+from datetime import datetime
+from core.memory_manager import MemoryManager
 
 # Caminho da personalidade base
-PERSONALITY_FILE = "config/personality.txt"
-LM_API_URL = "http://localhost:1234/v1/chat/completions"
+PERSONALITY_FILE = os.path.join("config", "personality.txt")
+LM_API_URL = os.getenv("LM_API_URL", "http://localhost:1234/v1/chat/completions")
 
 # Carrega a personalidade do sistema
 with open(PERSONALITY_FILE, "r", encoding="utf-8") as f:
     system_prompt = f.read()
 
-# Variável global de memória
-memoria = carregar_memoria()
+# Gerenciador de memória para Aria (substitua 'aria' conforme necessário)
+mem_manager = MemoryManager("aria")
 
-def set_system_prompt(novo_prompt):
+
+def set_system_prompt(novo_prompt: str):
     global system_prompt
     system_prompt = novo_prompt
 
-def conversar(pergunta):
-    global memoria
 
-    contexto_memoria = montar_contexto(memoria)
-    mensagens = [{"role": "system", "content": system_prompt + "\n\n" + contexto_memoria}]
-    memoria["contador_interacoes"] += 1
-    memoria["conversa"] = memoria.get("conversa", [])[-20:]
-    mensagens.extend(memoria["conversa"])
+def conversar(pergunta: str):
+    """
+    Generator que envia tokens de resposta enquanto chama a API.
+    Usa MemoryManager para contexto e registro de interações.
+    """
+    global mem_manager
+
+    # 1) Registra mensagem do usuário
+    mem_manager.record_interaction("user", pergunta, datetime.utcnow())
+
+    # 2) Monta lista de mensagens para a API com contexto recente
+    mensagens = [{"role": "system", "content": system_prompt}]
+    recents = mem_manager.get_recent()  # últimas N interações
+    for m in recents:
+        role = m['speaker']
+        # a API espera 'user' ou 'assistant'
+        api_role = 'user' if role == 'user' else 'assistant'
+        mensagens.append({"role": api_role, "content": m['text']})
     mensagens.append({"role": "user", "content": pergunta})
 
     payload = {
@@ -42,34 +53,21 @@ def conversar(pergunta):
     try:
         with requests.post(LM_API_URL, json=payload, stream=True) as response:
             for linha in response.iter_lines():
-                if linha:
-                    try:
-                        linha = linha.decode("utf-8").replace("data: ", "")
-                        if linha.strip() == "[DONE]":
-                            break
-                        data = json.loads(linha)
-                        token = data["choices"][0]["delta"].get("content", "")
-                        resposta += token
-                        yield token
-                    except:
-                        continue
-    except:
-        yield "[Erro: não foi possível gerar resposta]"
+                if not linha:
+                    continue
+                chunk = linha.decode('utf-8').replace('data: ', '')
+                if chunk.strip() == '[DONE]':
+                    break
+                # usa json.loads do Python, não requests.utils.json
+                data = json.loads(chunk)
+                token = data['choices'][0]['delta'].get('content', '')
+                resposta += token
+                yield token
+    except Exception as e:
+        yield f"[Erro: não foi possível gerar resposta ({e})]"
         return
 
-    # Salva a resposta completa após o yield
-    memoria["conversa"].append({"role": "user", "content": pergunta})
-    memoria["conversa"].append({"role": "assistant", "content": resposta})
+    # 3) Registra resposta completa
+    mem_manager.record_interaction("assistant", resposta, datetime.utcnow())
 
-    if memoria["contador_interacoes"] % 15 == 0:
-        trechos = [f"{'Usuário' if m['role']=='user' else 'IA'}: {m['content']}" for m in memoria["conversa"]]
-        resumo = gerar_resumo_com_ia(trechos)
-        memoria["resumo_breve"].append(resumo)
-        if len(memoria["resumo_breve"]) > 10:
-            antigos = memoria["resumo_breve"][:3]
-            resumo_antigo = gerar_resumo_com_ia(antigos)
-            memoria["resumo_antigo"].append(resumo_antigo)
-            memoria["resumo_breve"] = memoria["resumo_breve"][3:]
-
-    salvar_memoria(memoria)
     return resposta
