@@ -111,6 +111,46 @@ def registrar_raw(role, content, base_dir):
     return msg_id
 
 
+def remover_ultimas_raw(base_dir, n=1):
+    """Remove as *n* últimas mensagens registradas nos arquivos raw."""
+    meta = _load_meta(base_dir)
+    while n > 0 and meta["last_id"] > 0:
+        raw_file = os.path.join(base_dir, "raw", f"raw_{meta['current_raw']}.jsonl")
+        if not os.path.exists(raw_file):
+            if meta["current_raw"] > 1:
+                meta["current_raw"] -= 1
+                continue
+            break
+
+        with open(raw_file, "r+", encoding="utf-8") as f:
+            linhas = f.readlines()
+            if not linhas:
+                f.truncate(0)
+                if meta["current_raw"] > 1:
+                    meta["current_raw"] -= 1
+                meta["count_in_raw"] = 0
+                continue
+            linhas.pop()
+            f.seek(0)
+            f.truncate()
+            f.writelines(linhas)
+
+        meta["last_id"] -= 1
+        meta["count_in_raw"] -= 1
+        n -= 1
+
+        if meta["count_in_raw"] == 0 and meta["current_raw"] > 1:
+            meta["current_raw"] -= 1
+            prev_file = os.path.join(base_dir, "raw", f"raw_{meta['current_raw']}.jsonl")
+            if os.path.exists(prev_file):
+                with open(prev_file, "r", encoding="utf-8") as pf:
+                    meta["count_in_raw"] = len(pf.readlines())
+            else:
+                meta["count_in_raw"] = 0
+
+    _save_meta(meta, base_dir)
+
+
 def _ler_raw_intervalo(base_dir, start_id, end_id):
     meta = _load_meta(base_dir)
     mensagens = []
