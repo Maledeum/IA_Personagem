@@ -3,8 +3,6 @@ from core.chat import conversar
 from core.memoria import carregar_memoria
 import time
 import psutil
-from transformers import GPT2TokenizerFast
-tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 memoria = carregar_memoria()
 
 def responder(pergunta, historico):
