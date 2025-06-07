@@ -11,23 +11,32 @@ EPISODES_PER_BRANCH = 4
 BRANCHES_PER_GLOBAL = 4
 
 def carregar_memoria(arquivo=DEFAULT_MEMORY_FILE):
-    if os.path.exists(arquivo):
-        with open(arquivo, "r", encoding="utf-8") as f:
-            memoria = json.load(f)
-    else:
-        memoria = {
-            "usuario": {},
-            "personagem": {},
-            "conversa": [],
-            "resumo_breve": [],
-            "resumo_antigo": [],
-            "contador_interacoes": 0
-        }
+    """Carrega o dicionário de memória persistido em *arquivo*.
 
-    # Garante que todas as chaves existam mesmo se o arquivo já existia
+    Caso o arquivo não exista ou contém dados inválidos, retorna uma
+    estrutura padrão em formato de dicionário. Isso evita erros quando, por
+    algum motivo, o JSON salvo ficou corrompido ou possui um formato
+    inesperado (por exemplo uma lista vazia), o que levou ao
+    ``AttributeError`` relatado.
+    """
+
+    memoria = {}
+    if os.path.exists(arquivo):
+        try:
+            with open(arquivo, "r", encoding="utf-8") as f:
+                memoria = json.load(f)
+        except Exception:
+            # Arquivo corrompido ou não é JSON válido
+            memoria = {}
+
+    if not isinstance(memoria, dict):
+        memoria = {}
+    
+    memoria.setdefault("usuario", {})
+    memoria.setdefault("personagem", {})
+    memoria.setdefault("conversa", [])
     memoria.setdefault("resumo_breve", [])
     memoria.setdefault("resumo_antigo", [])
-    memoria.setdefault("conversa", [])
     memoria.setdefault("contador_interacoes", 0)
 
     return memoria
@@ -39,9 +48,13 @@ def salvar_memoria(memoria, arquivo=DEFAULT_MEMORY_FILE):
 
 
 def _load_json(path, default):
+    """Load JSON data from *path* returning *default* on error."""
     if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return default
     return default
 
 
@@ -59,11 +72,14 @@ def _append_jsonl(path, obj):
 
 
 def _load_meta(base_dir):
-    return _load_json(os.path.join(base_dir, "meta.json"), {
-        "current_raw": 1,
-        "count_in_raw": 0,
-        "last_id": 0
-    })
+    """Load or initialize metadata for hierarchical memory."""
+    meta = _load_json(os.path.join(base_dir, "meta.json"), {})
+    if not isinstance(meta, dict):
+        meta = {}
+    meta.setdefault("current_raw", 1)
+    meta.setdefault("count_in_raw", 0)
+    meta.setdefault("last_id", 0)
+    return meta
 
 
 def _save_meta(meta, base_dir):
