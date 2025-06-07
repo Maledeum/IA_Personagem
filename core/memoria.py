@@ -48,9 +48,13 @@ def salvar_memoria(memoria, arquivo=DEFAULT_MEMORY_FILE):
 
 
 def _load_json(path, default):
+    """Load JSON data from *path* returning *default* on error."""
     if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return default
     return default
 
 
@@ -68,11 +72,14 @@ def _append_jsonl(path, obj):
 
 
 def _load_meta(base_dir):
-    return _load_json(os.path.join(base_dir, "meta.json"), {
-        "current_raw": 1,
-        "count_in_raw": 0,
-        "last_id": 0
-    })
+    """Load or initialize metadata for hierarchical memory."""
+    meta = _load_json(os.path.join(base_dir, "meta.json"), {})
+    if not isinstance(meta, dict):
+        meta = {}
+    meta.setdefault("current_raw", 1)
+    meta.setdefault("count_in_raw", 0)
+    meta.setdefault("last_id", 0)
+    return meta
 
 
 def _save_meta(meta, base_dir):
