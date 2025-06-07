@@ -1,6 +1,7 @@
 # memoria.py
 import json
 import os
+import warnings
 
 DEFAULT_MEMORY_DIR = "memory"
 DEFAULT_MEMORY_FILE = os.path.join(DEFAULT_MEMORY_DIR, "working_memory.json")
@@ -196,7 +197,20 @@ def gerar_resumo_global(base_dir, resumo_func):
         return None
     start = len(globais) * BRANCHES_PER_GLOBAL
     subset = branches[start:start + BRANCHES_PER_GLOBAL]
-    trechos = [b["summary"] for b in subset]
+
+    valid = []
+    for item in subset:
+        if isinstance(item, dict) and "id" in item and "summary" in item:
+            valid.append(item)
+        else:
+            warnings.warn(
+                "Ignorando entrada inválida em historical_summaries.json",
+                RuntimeWarning,
+            )
+    if len(valid) < BRANCHES_PER_GLOBAL:
+        return None
+
+    trechos = [b["summary"] for b in valid]
     resumo = resumo_func(trechos)
-    _save_global_summary(base_dir, [b["id"] for b in subset], resumo)
+    _save_global_summary(base_dir, [b["id"] for b in valid], resumo)
     return resumo
