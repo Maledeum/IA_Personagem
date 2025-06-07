@@ -4,7 +4,7 @@ import json
 import time
 import psutil
 import core.chat as chat
-from core.memoria import salvar_memoria
+from core.memoria import salvar_memoria, remover_ultimas_raw
 from transformers import GPT2TokenizerFast
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
@@ -95,6 +95,7 @@ def excluir_ultima_interacao(historico):
         del historico[-2:]
         if chat.memoria.get("conversa"):
             chat.memoria["conversa"] = chat.memoria["conversa"][:-2]
+            remover_ultimas_raw(chat.memory_base, 2)
             salvar_memoria(chat.memoria, chat.memory_file)
     return historico, historico
 
