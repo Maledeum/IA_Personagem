@@ -11,23 +11,32 @@ EPISODES_PER_BRANCH = 4
 BRANCHES_PER_GLOBAL = 4
 
 def carregar_memoria(arquivo=DEFAULT_MEMORY_FILE):
-    if os.path.exists(arquivo):
-        with open(arquivo, "r", encoding="utf-8") as f:
-            memoria = json.load(f)
-    else:
-        memoria = {
-            "usuario": {},
-            "personagem": {},
-            "conversa": [],
-            "resumo_breve": [],
-            "resumo_antigo": [],
-            "contador_interacoes": 0
-        }
+    """Carrega o dicionário de memória persistido em *arquivo*.
 
-    # Garante que todas as chaves existam mesmo se o arquivo já existia
+    Caso o arquivo não exista ou contém dados inválidos, retorna uma
+    estrutura padrão em formato de dicionário. Isso evita erros quando, por
+    algum motivo, o JSON salvo ficou corrompido ou possui um formato
+    inesperado (por exemplo uma lista vazia), o que levou ao
+    ``AttributeError`` relatado.
+    """
+
+    memoria = {}
+    if os.path.exists(arquivo):
+        try:
+            with open(arquivo, "r", encoding="utf-8") as f:
+                memoria = json.load(f)
+        except Exception:
+            # Arquivo corrompido ou não é JSON válido
+            memoria = {}
+
+    if not isinstance(memoria, dict):
+        memoria = {}
+    
+    memoria.setdefault("usuario", {})
+    memoria.setdefault("personagem", {})
+    memoria.setdefault("conversa", [])
     memoria.setdefault("resumo_breve", [])
     memoria.setdefault("resumo_antigo", [])
-    memoria.setdefault("conversa", [])
     memoria.setdefault("contador_interacoes", 0)
 
     return memoria
