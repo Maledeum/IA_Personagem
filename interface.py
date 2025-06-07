@@ -119,6 +119,10 @@ with gr.Blocks(title="IA com Memória") as demo:
     gr.Markdown("Construído com LM Studio + Gradio")
 
     chatbot.render()
+
+    entrada.render()
+    botao_carregar.render()
+    botao_excluir.render()
     seletor.render()
     entrada.render()
     with gr.Row():
