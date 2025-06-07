@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import time
 from transformers import GPT2TokenizerFast
 
@@ -17,13 +18,13 @@ def contar_tokens_mensagens(mensagens):
         return 0
     return sum(len(tokenizer.encode(m["content"])) for m in mensagens if m.get("content"))
 
-def testar_memoria():
+def testar_memoria(mem_file=MEMORY_FILE):
     print("\n[TESTE] Verificando arquivo de memória...")
-    if not os.path.exists(MEMORY_FILE):
+    if not os.path.exists(mem_file):
         print("❌ Arquivo de memória não existe.")
         return None
     try:
-        with open(MEMORY_FILE, "r", encoding="utf-8") as f:
+        with open(mem_file, "r", encoding="utf-8") as f:
             dados = json.load(f)
         assert "conversa" in dados
         assert isinstance(dados["conversa"], list)
@@ -54,8 +55,8 @@ def simular_tempo_resposta():
     end = time.time()
     print(f"⏱️ Tempo simulado de processamento: {end - start:.4f} segundos")
 
-def main():
-    conversa = testar_memoria()
+def main(mem_file=MEMORY_FILE):
+    conversa = testar_memoria(mem_file)
     if conversa is None:
         return
     verificar_mensagens_vazias(conversa)
@@ -63,4 +64,5 @@ def main():
     simular_tempo_resposta()
 
 if __name__ == "__main__":
-    main()
+    caminho = sys.argv[1] if len(sys.argv) > 1 else MEMORY_FILE
+    main(caminho)

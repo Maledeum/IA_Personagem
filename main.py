@@ -1,14 +1,22 @@
-from core.chat import conversar, set_system_prompt
+import os
+import json
+import sys
+from core.chat import conversar, set_system_prompt, set_memory_file
 
-PERSONALITY_FILE = "config/personality.txt"
+PERSONALIDADES_DIR = "personalidades"
+
+def carregar_personalidade(nome):
+    caminho = os.path.join(PERSONALIDADES_DIR, f"{nome}.json")
+    with open(caminho, "r", encoding="utf-8") as f:
+        dados = json.load(f)
+    set_system_prompt(dados.get("prompt", ""))
+    set_memory_file(os.path.join("memory", f"{nome}.json"))
+    return dados.get("nome", nome)
 
 if __name__ == "__main__":
-    with open(PERSONALITY_FILE, "r", encoding="utf-8") as f:
-        system_prompt = f.read()
-
-    set_system_prompt(system_prompt)
-
-    print("🧠 Aria está pronta para conversar.\n")
+    nome_persona = sys.argv[1] if len(sys.argv) > 1 else "aria"
+    nome_exibicao = carregar_personalidade(nome_persona)
+    print(f"🧠 {nome_exibicao} está pronta para conversar.\n")
 
     while True:
         entrada = input("Você: ")

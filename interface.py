@@ -1,11 +1,42 @@
 import gradio as gr
-from core.chat import conversar
-from core.memoria import carregar_memoria
+import os
+import json
 import time
 import psutil
+from core.chat import conversar, set_system_prompt, set_memory_file
+from core.memoria import carregar_memoria
 from transformers import GPT2TokenizerFast
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
-memoria = carregar_memoria()
+
+PERSONALIDADES_DIR = "personalidades"
+
+def carregar_personalidades():
+    personalidades = {}
+    for arq in os.listdir(PERSONALIDADES_DIR):
+        if arq.endswith(".json"):
+            caminho = os.path.join(PERSONALIDADES_DIR, arq)
+            with open(caminho, "r", encoding="utf-8") as f:
+                dados = json.load(f)
+            nome = dados.get("nome", os.path.splitext(arq)[0])
+            personalidades[nome] = {
+                "dados": dados,
+                "arquivo": caminho,
+                "id": os.path.splitext(arq)[0],
+            }
+    return personalidades
+
+PERSONALIDADES = carregar_personalidades()
+PERSONALIDADE_PADRAO = list(PERSONALIDADES.keys())[0]
+
+def inicializar_personalidade(nome):
+    info = PERSONALIDADES[nome]
+    set_system_prompt(info["dados"].get("prompt", ""))
+    caminho_mem = os.path.join("memory", f"{info['id']}.json")
+    set_memory_file(caminho_mem)
+    global memoria
+    memoria = carregar_memoria(caminho_mem)
+
+inicializar_personalidade(PERSONALIDADE_PADRAO)
 
 def responder(pergunta, historico):
     resposta_acumulada = ""
@@ -57,24 +88,31 @@ def carregar_historico():
             historico.append({"role": msg["role"], "content": msg["content"]})
     return historico, historico
 
-chatbot = gr.Chatbot(label="Aria - Assistente IA", type="messages")
+def escolher_personalidade(nome):
+    inicializar_personalidade(nome)
+    return carregar_historico()
+
+chatbot = gr.Chatbot(label="Assistente IA", type="messages")
 entrada = gr.Textbox(placeholder="Digite sua pergunta...", label="Você:")
 estado = gr.State([])
 botao_carregar = gr.Button("🔄 Carregar histórico")
+seletor = gr.Dropdown(list(PERSONALIDADES.keys()), label="Personalidade", value=PERSONALIDADE_PADRAO)
 metricas = gr.Textbox(label="Métricas de desempenho", interactive=False, lines=4)
 
-with gr.Blocks(title="Aria - IA com Memória") as demo:
-    gr.Markdown("## Aria - Assistente IA com memória em camadas")
+with gr.Blocks(title="IA com Memória") as demo:
+    gr.Markdown("## Assistente IA com múltiplas personalidades")
     gr.Markdown("Construído com LM Studio + Gradio")
 
     chatbot.render()
     entrada.render()
     botao_carregar.render()
+    seletor.render()
     estado.render()
     metricas.render()
 
     entrada.submit(fn=responder, inputs=[entrada, estado], outputs=[chatbot, estado, metricas, entrada])
     botao_carregar.click(fn=carregar_historico, inputs=[], outputs=[chatbot, estado])
+    seletor.change(fn=escolher_personalidade, inputs=seletor, outputs=[chatbot, estado])
 
 if __name__ == "__main__":
     demo.launch()
