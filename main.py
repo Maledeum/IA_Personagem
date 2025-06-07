@@ -10,7 +10,7 @@ def carregar_personalidade(nome):
     with open(caminho, "r", encoding="utf-8") as f:
         dados = json.load(f)
     set_system_prompt(dados.get("prompt", ""))
-    set_memory_file(os.path.join("memory", f"{nome}.json"))
+    set_memory_file(os.path.join("memory", nome))
     return dados.get("nome", nome)
 
 if __name__ == "__main__":
