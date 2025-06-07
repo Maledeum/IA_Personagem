@@ -3,14 +3,8 @@ import os
 import json
 import time
 import psutil
-from core.chat import (
-    conversar,
-    set_system_prompt,
-    set_memory_file,
-    memoria,
-    memory_file,
-)
-from core.memoria import carregar_memoria, salvar_memoria
+import core.chat as chat
+from core.memoria import salvar_memoria
 from transformers import GPT2TokenizerFast
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
@@ -36,11 +30,9 @@ PERSONALIDADE_PADRAO = list(PERSONALIDADES.keys())[0]
 
 def inicializar_personalidade(nome):
     info = PERSONALIDADES[nome]
-    set_system_prompt(info["dados"].get("prompt", ""))
+    chat.set_system_prompt(info["dados"].get("prompt", ""))
     caminho_mem = os.path.join("memory", f"{info['id']}.json")
-    set_memory_file(caminho_mem)
-    global memoria
-    memoria = carregar_memoria(caminho_mem)
+    chat.set_memory_file(caminho_mem)
 
 inicializar_personalidade(PERSONALIDADE_PADRAO)
 
@@ -55,7 +47,7 @@ def responder(pergunta, historico):
     token_count = 0
     buffer = ""
 
-    for token in conversar(pergunta):
+    for token in chat.conversar(pergunta):
         buffer += token
         token_count += 1  # contar token gerado (simplificado)
 
@@ -87,7 +79,7 @@ def responder(pergunta, historico):
     yield historico, historico, metricas, ""
 
 def carregar_historico():
-    conversa = memoria.get("conversa", [])
+    conversa = chat.memoria.get("conversa", [])
     historico = []
     for msg in conversa:
         if msg["role"] in ["user", "assistant"]:
@@ -101,9 +93,9 @@ def escolher_personalidade(nome):
 def excluir_ultima_interacao(historico):
     if len(historico) >= 2:
         del historico[-2:]
-        if memoria.get("conversa"):
-            memoria["conversa"] = memoria["conversa"][:-2]
-            salvar_memoria(memoria, memory_file)
+        if chat.memoria.get("conversa"):
+            chat.memoria["conversa"] = chat.memoria["conversa"][:-2]
+            salvar_memoria(chat.memoria, chat.memory_file)
     return historico, historico
 
 chatbot = gr.Chatbot(label="Assistente IA", type="messages")
