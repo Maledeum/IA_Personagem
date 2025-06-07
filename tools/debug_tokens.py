@@ -1,4 +1,5 @@
 import json
+import sys
 from transformers import GPT2TokenizerFast
 
 # Caminho para o arquivo de memória
@@ -8,12 +9,12 @@ def contar_tokens_mensagens(mensagens):
     tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
     return sum(len(tokenizer.encode(m["content"])) for m in mensagens)
 
-def main():
+def main(mem_file=MEMORY_FILE):
     try:
-        with open(MEMORY_FILE, "r", encoding="utf-8") as f:
+        with open(mem_file, "r", encoding="utf-8") as f:
             memoria = json.load(f)
     except FileNotFoundError:
-        print(f"Arquivo {MEMORY_FILE} não encontrado.")
+        print(f"Arquivo {mem_file} não encontrado.")
         return
 
     conversa = memoria.get("conversa", [])
@@ -24,4 +25,5 @@ def main():
     print(f"Número de mensagens na conversa: {len(conversa)}")
 
 if __name__ == "__main__":
-    main()
+    caminho = sys.argv[1] if len(sys.argv) > 1 else MEMORY_FILE
+    main(caminho)

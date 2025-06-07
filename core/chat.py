@@ -1,4 +1,5 @@
 import json
+import os
 import requests
 
 from core.memoria import carregar_memoria, salvar_memoria
@@ -6,19 +7,32 @@ from core.contexto import montar_contexto
 from core.resumo import gerar_resumo_com_ia
 
 # Caminho da personalidade base
-PERSONALITY_FILE = "config/personality.txt"
+DEFAULT_PERSONALITY_FILE = "config/personality.txt"
 LM_API_URL = "http://localhost:1234/v1/chat/completions"
 
 # Carrega a personalidade do sistema
-with open(PERSONALITY_FILE, "r", encoding="utf-8") as f:
+with open(DEFAULT_PERSONALITY_FILE, "r", encoding="utf-8") as f:
     system_prompt = f.read()
 
 # Variável global de memória
-memoria = carregar_memoria()
+memory_file = os.path.join("memory", "memory.json")
+memoria = carregar_memoria(memory_file)
 
 def set_system_prompt(novo_prompt):
     global system_prompt
     system_prompt = novo_prompt
+
+def set_memory_file(caminho):
+    global memory_file, memoria
+    memory_file = caminho
+    memoria = carregar_memoria(memory_file)
+
+def carregar_personalidade(arquivo_json):
+    with open(arquivo_json, "r", encoding="utf-8") as f:
+        dados = json.load(f)
+    set_system_prompt(dados.get("prompt", ""))
+    nome = os.path.splitext(os.path.basename(arquivo_json))[0]
+    set_memory_file(os.path.join("memory", f"{nome}.json"))
 
 def conversar(pergunta):
     global memoria
@@ -71,5 +85,5 @@ def conversar(pergunta):
             memoria["resumo_antigo"].append(resumo_antigo)
             memoria["resumo_breve"] = memoria["resumo_breve"][3:]
 
-    salvar_memoria(memoria)
+    salvar_memoria(memoria, memory_file)
     return resposta

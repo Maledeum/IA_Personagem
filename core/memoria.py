@@ -2,11 +2,12 @@
 import json
 import os
 
-MEMORY_FILE = "memory/memory.json"
+DEFAULT_MEMORY_DIR = "memory"
+DEFAULT_MEMORY_FILE = os.path.join(DEFAULT_MEMORY_DIR, "memory.json")
 
-def carregar_memoria():
-    if os.path.exists(MEMORY_FILE):
-        with open(MEMORY_FILE, "r", encoding="utf-8") as f:
+def carregar_memoria(arquivo=DEFAULT_MEMORY_FILE):
+    if os.path.exists(arquivo):
+        with open(arquivo, "r", encoding="utf-8") as f:
             memoria = json.load(f)
     else:
         memoria = {
@@ -26,6 +27,7 @@ def carregar_memoria():
 
     return memoria
 
-def salvar_memoria(memoria):
-    with open(MEMORY_FILE, "w", encoding="utf-8") as f:
+def salvar_memoria(memoria, arquivo=DEFAULT_MEMORY_FILE):
+    os.makedirs(os.path.dirname(arquivo), exist_ok=True)
+    with open(arquivo, "w", encoding="utf-8") as f:
         json.dump(memoria, f, indent=2, ensure_ascii=False)
