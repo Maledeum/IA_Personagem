@@ -3,8 +3,14 @@ import os
 import json
 import time
 import psutil
-from core.chat import conversar, set_system_prompt, set_memory_file
-from core.memoria import carregar_memoria
+from core.chat import (
+    conversar,
+    set_system_prompt,
+    set_memory_file,
+    memoria,
+    memory_file,
+)
+from core.memoria import carregar_memoria, salvar_memoria
 from transformers import GPT2TokenizerFast
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
@@ -92,10 +98,19 @@ def escolher_personalidade(nome):
     inicializar_personalidade(nome)
     return carregar_historico()
 
+def excluir_ultima_interacao(historico):
+    if len(historico) >= 2:
+        del historico[-2:]
+        if memoria.get("conversa"):
+            memoria["conversa"] = memoria["conversa"][:-2]
+            salvar_memoria(memoria, memory_file)
+    return historico, historico
+
 chatbot = gr.Chatbot(label="Assistente IA", type="messages")
 entrada = gr.Textbox(placeholder="Digite sua pergunta...", label="Você:")
 estado = gr.State([])
 botao_carregar = gr.Button("🔄 Carregar histórico")
+botao_excluir = gr.Button("🗑️ Excluir última mensagem")
 seletor = gr.Dropdown(list(PERSONALIDADES.keys()), label="Personalidade", value=PERSONALIDADE_PADRAO)
 metricas = gr.Textbox(label="Métricas de desempenho", interactive=False, lines=4)
 
@@ -104,14 +119,18 @@ with gr.Blocks(title="IA com Memória") as demo:
     gr.Markdown("Construído com LM Studio + Gradio")
 
     chatbot.render()
-    entrada.render()
-    botao_carregar.render()
     seletor.render()
+    entrada.render()
+    with gr.Row():
+        botao_carregar.render()
+        botao_excluir.render()
+    
     estado.render()
     metricas.render()
 
     entrada.submit(fn=responder, inputs=[entrada, estado], outputs=[chatbot, estado, metricas, entrada])
     botao_carregar.click(fn=carregar_historico, inputs=[], outputs=[chatbot, estado])
+    botao_excluir.click(fn=excluir_ultima_interacao, inputs=estado, outputs=[chatbot, estado])
     seletor.change(fn=escolher_personalidade, inputs=seletor, outputs=[chatbot, estado])
 
 if __name__ == "__main__":
