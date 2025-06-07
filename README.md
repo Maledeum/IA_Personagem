@@ -13,9 +13,6 @@ Instale as dependências com:
 pip install -r requirements.txt
 ```
 
-> Se não houver um `requirements.txt`, instale manualmente:
-> `pip install requests gradio psutil transformers`
-
 ## Estrutura
 
 - `core/` – módulos principais de chat, memória e contexto
