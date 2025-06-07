@@ -31,7 +31,7 @@ PERSONALIDADE_PADRAO = list(PERSONALIDADES.keys())[0]
 def inicializar_personalidade(nome):
     info = PERSONALIDADES[nome]
     chat.set_system_prompt(info["dados"].get("prompt", ""))
-    caminho_mem = os.path.join("memory", f"{info['id']}.json")
+    caminho_mem = os.path.join("memory", info["id"])
     chat.set_memory_file(caminho_mem)
 
 inicializar_personalidade(PERSONALIDADE_PADRAO)
