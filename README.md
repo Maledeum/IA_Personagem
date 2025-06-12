@@ -16,7 +16,10 @@ pip install -r requirements.txt
 ## Estrutura
 
 - `core/` – módulos principais de chat, memória e contexto
-- `personalidades/` – arquivos JSON com as personalidades disponíveis
+- `personalidades/` – arquivos JSON com as personalidades disponíveis. Cada
+  arquivo pode conter campos extras como `idade`, `aparencia`, `modo_falar`,
+  `relacoes` e `inventario` que são carregados para compor o prompt.
+- `usuarios/` – perfis de usuário que podem ser carregados e editados pela interface
 - `interface.py` – versão com interface web (Gradio)
 - `main.py` – versão para uso no terminal
 - `tools/` – scripts auxiliares para depuração e testes
@@ -28,9 +31,10 @@ O arquivo de memória agora é salvo em `memory/<personagem>.json` e será criad
 ### Terminal
 
 ```bash
-python main.py nome_da_personalidade
+python main.py nome_da_personalidade [perfil_usuario]
 ```
-Substitua `nome_da_personalidade` pelo arquivo desejado em `personalidades/` (ex.: `aria` ou `beto`).
+Substitua `nome_da_personalidade` pelo arquivo em `personalidades/` (ex.: `aria` ou `beto`).
+Se desejar, informe também um perfil de usuário existente em `usuarios/`.
 
 ### Interface Web
 

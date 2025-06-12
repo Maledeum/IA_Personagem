@@ -45,11 +45,31 @@ def set_memory_file(caminho):
     memoria = carregar_memoria(memory_file)
 
 def carregar_personalidade(arquivo_json):
+    """Carrega dados da personalidade *arquivo_json* e atualiza a memória."""
     with open(arquivo_json, "r", encoding="utf-8") as f:
         dados = json.load(f)
+
     set_system_prompt(dados.get("prompt", ""))
+
     nome = os.path.splitext(os.path.basename(arquivo_json))[0]
     set_memory_file(os.path.join("memory", nome))
+
+    # Mantém todos os campos, exceto o prompt, dentro de memoria["personagem"]
+    atributos = {k: v for k, v in dados.items() if k != "prompt"}
+    memoria.setdefault("personagem", {}).update(atributos)
+    salvar_memoria(memoria, memory_file)
+
+    return memoria["personagem"].get("nome", nome)
+
+def carregar_usuario(arquivo_json):
+    """Carrega dados do usuário *arquivo_json* e atualiza a memória."""
+    if not os.path.exists(arquivo_json):
+        return None
+    with open(arquivo_json, "r", encoding="utf-8") as f:
+        dados = json.load(f)
+    memoria.setdefault("usuario", {}).update(dados)
+    salvar_memoria(memoria, memory_file)
+    return memoria["usuario"].get("nome", None)
 
 def conversar(pergunta):
     global memoria
