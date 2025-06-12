@@ -24,7 +24,7 @@ pip install -r requirements.txt
 - `main.py` – versão para uso no terminal
 - `tools/` – scripts auxiliares para depuração e testes
 
-O arquivo de memória agora é salvo em `memory/<personagem>.json` e será criado automaticamente na primeira execução de cada personalidade.
+Cada personalidade armazena sua memória em `memory/<personagem>/working_memory.json`, criado automaticamente na primeira execução.
 
 ## Executando
 
