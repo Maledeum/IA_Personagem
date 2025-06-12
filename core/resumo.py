@@ -1,6 +1,6 @@
 import requests
 
-LM_API_URL = "http://localhost:1234/v1/chat/completions"
+from core.config import LM_API_URL
 
 def gerar_resumo_com_ia(trechos):
     prompt_resumo = "Resuma brevemente os principais tópicos da conversa a seguir:\n\n"
