@@ -18,10 +18,10 @@ from core.resumo import (
     resumo_branch,
     resumo_global,
 )
+from core.config import LM_API_URL
 
 # Caminho da personalidade base
 DEFAULT_PERSONALITY_FILE = "config/personality.txt"
-LM_API_URL = "http://localhost:1234/v1/chat/completions"
 
 # Carrega a personalidade do sistema
 with open(DEFAULT_PERSONALITY_FILE, "r", encoding="utf-8") as f:
