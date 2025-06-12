@@ -1,0 +1,6 @@
+{
+  "nome": "Jogador",
+  "idade": 30,
+  "modo_falar": "casual",
+  "preferencias": {"cor": "azul"}
+}

@@ -9,6 +9,7 @@ from transformers import GPT2TokenizerFast
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
 PERSONALIDADES_DIR = "personalidades"
+USUARIOS_DIR = "usuarios"
 
 def carregar_personalidades():
     personalidades = {}
@@ -25,16 +26,27 @@ def carregar_personalidades():
             }
     return personalidades
 
+def carregar_usuario_padrao():
+    """Carrega dados padrão de usuário do arquivo usuarios/padrao.json."""
+    caminho = os.path.join(USUARIOS_DIR, "padrao.json")
+    if os.path.exists(caminho):
+        with open(caminho, "r", encoding="utf-8") as f:
+            dados = json.load(f)
+        chat.carregar_usuario(caminho)
+        return dados
+    return {}
+
 PERSONALIDADES = carregar_personalidades()
 PERSONALIDADE_PADRAO = list(PERSONALIDADES.keys())[0]
+USUARIO_PADRAO = carregar_usuario_padrao()
 
 def inicializar_personalidade(nome):
+    """Carrega a personalidade selecionada utilizando chat.carregar_personalidade."""
     info = PERSONALIDADES[nome]
-    chat.set_system_prompt(info["dados"].get("prompt", ""))
-    caminho_mem = os.path.join("memory", info["id"])
-    chat.set_memory_file(caminho_mem)
+    chat.carregar_personalidade(info["arquivo"])
 
 inicializar_personalidade(PERSONALIDADE_PADRAO)
+carregar_usuario_padrao()
 
 def responder(pergunta, historico):
     resposta_acumulada = ""
@@ -88,6 +100,7 @@ def carregar_historico():
 
 def escolher_personalidade(nome):
     inicializar_personalidade(nome)
+    carregar_usuario_padrao()
     return carregar_historico()
 
 def excluir_ultima_interacao(historico):
@@ -99,19 +112,36 @@ def excluir_ultima_interacao(historico):
             salvar_memoria(chat.memoria, chat.memory_file)
     return historico, historico
 
+def atualizar_usuario(nome, cor):
+    chat.memoria.setdefault("usuario", {})
+    if nome:
+        chat.memoria["usuario"]["nome"] = nome
+    if cor:
+        prefs = chat.memoria["usuario"].setdefault("preferencias", {})
+        prefs["cor"] = cor
+    salvar_memoria(chat.memoria, chat.memory_file)
+    return carregar_historico()
+
 chatbot = gr.Chatbot(label="Assistente IA", type="messages")
 entrada = gr.Textbox(placeholder="Digite sua pergunta...", label="Você:")
 estado = gr.State([])
 botao_carregar = gr.Button("🔄 Carregar histórico")
 botao_excluir = gr.Button("🗑️ Excluir última mensagem")
 seletor = gr.Dropdown(list(PERSONALIDADES.keys()), label="Personalidade", value=PERSONALIDADE_PADRAO)
+usuario_nome = gr.Textbox(label="Seu nome", value=USUARIO_PADRAO.get("nome", ""))
+usuario_cor = gr.Textbox(label="Cor favorita", value=USUARIO_PADRAO.get("preferencias", {}).get("cor", ""))
+botao_usuario = gr.Button("Salvar usuário")
 metricas = gr.Textbox(label="Métricas de desempenho", interactive=False, lines=4)
 
 with gr.Blocks(title="IA com Memória") as demo:
     gr.Markdown("## Assistente IA com múltiplas personalidades")
     gr.Markdown("Construído com LM Studio + Gradio")
-    
+
     seletor.render()
+    with gr.Row():
+        usuario_nome.render()
+        usuario_cor.render()
+        botao_usuario.render()
     chatbot.render()
     entrada.render()
     
@@ -125,6 +155,7 @@ with gr.Blocks(title="IA com Memória") as demo:
     entrada.submit(fn=responder, inputs=[entrada, estado], outputs=[chatbot, estado, metricas, entrada])
     botao_carregar.click(fn=carregar_historico, inputs=[], outputs=[chatbot, estado])
     botao_excluir.click(fn=excluir_ultima_interacao, inputs=estado, outputs=[chatbot, estado])
+    botao_usuario.click(fn=atualizar_usuario, inputs=[usuario_nome, usuario_cor], outputs=[chatbot, estado])
     seletor.change(fn=escolher_personalidade, inputs=seletor, outputs=[chatbot, estado])
 
 if __name__ == "__main__":
