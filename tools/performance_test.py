@@ -4,7 +4,8 @@ import sys
 import time
 from transformers import GPT2TokenizerFast
 
-MEMORY_FILE = "memory/memory.json"
+# Caminho para o arquivo de memória padrão
+MEMORY_FILE = "memory/default/working_memory.json"
 
 # Carrega tokenizer GPT-2
 try:
