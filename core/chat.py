@@ -92,6 +92,8 @@ def conversar(pergunta):
     resposta = ""
     try:
         with requests.post(LM_API_URL, json=payload, stream=True) as response:
+            if response.status_code != 200:
+                response.raise_for_status()
             for linha in response.iter_lines():
                 if linha:
                     try:
@@ -102,10 +104,10 @@ def conversar(pergunta):
                         token = data["choices"][0]["delta"].get("content", "")
                         resposta += token
                         yield token
-                    except:
+                    except Exception:
                         continue
-    except:
-        yield "[Erro: não foi possível gerar resposta]"
+    except requests.RequestException as exc:
+        yield f"[Erro na requisição: {exc}]"
         return
 
     # Salva a resposta completa e registra em memória hierárquica
