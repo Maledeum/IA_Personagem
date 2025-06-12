@@ -49,7 +49,7 @@ A aplicação abrirá um servidor local com chat em tempo real.
 Para verificar a integridade do código Python:
 
 ```bash
-python -m py_compile interface.py main.py core/chat.py core/memoria.py core/contexto.py core/resumo.py tools/debug_tokens.py tools/performance_test.py "tools/teste local.py"
+python -m py_compile interface.py main.py core/chat.py core/memoria.py core/contexto.py core/resumo.py tools/debug_tokens.py tools/performance_test.py tools/teste_local.py
 ```
 
 Os scripts em `tools/` dependem da biblioteca `transformers` para calcular tokens. Caso ela não esteja instalada, esses scripts exibirão um erro.
