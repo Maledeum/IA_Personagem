@@ -2,8 +2,8 @@ import json
 import sys
 from transformers import GPT2TokenizerFast
 
-# Caminho para o arquivo de memória
-MEMORY_FILE = "memory/memory.json"
+# Caminho para o arquivo de memória padrão
+MEMORY_FILE = "memory/default/working_memory.json"
 
 def contar_tokens_mensagens(mensagens):
     tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
