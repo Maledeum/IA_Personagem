@@ -6,7 +6,11 @@ from transformers import GPT2TokenizerFast
 MEMORY_FILE = "memory/default/working_memory.json"
 
 def contar_tokens_mensagens(mensagens):
-    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+    try:
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+    except Exception as e:
+        print(f"Erro ao carregar tokenizer GPT-2: {e}")
+        return 0
     return sum(len(tokenizer.encode(m["content"])) for m in mensagens)
 
 def main(mem_file=MEMORY_FILE):

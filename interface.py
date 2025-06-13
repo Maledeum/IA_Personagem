@@ -5,8 +5,6 @@ import time
 import psutil
 import core.chat as chat
 from core.memoria import salvar_memoria, remover_ultimas_raw
-from transformers import GPT2TokenizerFast
-tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
 PERSONALIDADES_DIR = "personalidades"
 USUARIOS_DIR = "usuarios"
