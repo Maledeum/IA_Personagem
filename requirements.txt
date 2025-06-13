@@ -2,3 +2,5 @@ requests
 gradio
 psutil
 transformers
+sentence-transformers
+numpy
