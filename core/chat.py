@@ -19,6 +19,7 @@ from core.resumo import (
     resumo_global,
 )
 from core.config import LM_API_URL
+from core.rag import consultar_memoria
 
 # Caminho da personalidade base
 DEFAULT_PERSONALITY_FILE = "config/personality.txt"
@@ -32,6 +33,7 @@ memory_base = os.path.join("memory", "default")
 memory_file = os.path.join(memory_base, "working_memory.json")
 init_hierarchical(memory_base)
 memoria = carregar_memoria(memory_file)
+ultima_memoria_rag = ""
 
 def set_system_prompt(novo_prompt):
     global system_prompt
@@ -72,9 +74,22 @@ def carregar_usuario(arquivo_json):
     return memoria["usuario"].get("nome", None)
 
 def conversar(pergunta):
-    global memoria
+    global memoria, ultima_memoria_rag
+
+    episodios = consultar_memoria(pergunta, memory_base, top_k=3)
+    trechos = []
+    for ep in episodios:
+        texto = "\n".join(
+            f"{'Usuário' if m['role']=='user' else 'IA'}: {m['content']}" for m in ep["mensagens"]
+        )
+        trechos.append(f"[Episódio {ep['episodio']}]\n{texto}")
+    rag_texto = "\n\n".join(trechos)
+    ultima_memoria_rag = rag_texto
 
     contexto_memoria = montar_contexto(memoria)
+    if rag_texto:
+        contexto_memoria = rag_texto + "\n\n" + contexto_memoria
+
     mensagens = [{"role": "system", "content": system_prompt + "\n\n" + contexto_memoria}]
     memoria["contador_interacoes"] += 1
     memoria["conversa"] = memoria.get("conversa", [])[-20:]

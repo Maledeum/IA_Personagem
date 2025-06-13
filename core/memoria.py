@@ -3,6 +3,8 @@ import json
 import os
 import warnings
 
+from core.embeddings import get_embedding
+
 DEFAULT_MEMORY_DIR = "memory"
 DEFAULT_MEMORY_FILE = os.path.join(DEFAULT_MEMORY_DIR, "working_memory.json")
 
@@ -171,15 +173,18 @@ def _ler_raw_intervalo(base_dir, start_id, end_id):
     return mensagens
 
 
-def _save_episodic_summary(base_dir, start_id, end_id, resumo):
+def _save_episodic_summary(base_dir, start_id, end_id, resumo, embedding=None):
     arquivo = os.path.join(base_dir, "episodic_summaries.json")
     episodios = _load_json(arquivo, [])
-    episodios.append({
+    entry = {
         "id": len(episodios) + 1,
         "start_id": start_id,
         "end_id": end_id,
         "summary": resumo,
-    })
+    }
+    if embedding is not None:
+        entry["embedding"] = embedding
+    episodios.append(entry)
     _save_json(episodios, arquivo)
 
 
@@ -213,7 +218,8 @@ def gerar_resumo_episodio(base_dir, resumo_func):
     mensagens = _ler_raw_intervalo(base_dir, start_id, meta["last_id"])
     trechos = [f"{'Usuário' if m['role']=='user' else 'IA'}: {m['content']}" for m in mensagens]
     resumo = resumo_func(trechos)
-    _save_episodic_summary(base_dir, start_id, meta["last_id"], resumo)
+    embedding = get_embedding(resumo)
+    _save_episodic_summary(base_dir, start_id, meta["last_id"], resumo, embedding)
     return resumo
 
 

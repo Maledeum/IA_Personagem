@@ -67,14 +67,14 @@ def responder(pergunta, historico):
         if len(buffer) > 20 or token.endswith(('.', '!', '?')):
             resposta_acumulada += buffer
             historico[-1]["content"] = resposta_acumulada
-            yield historico, historico, "", ""  # mantém os 4 outputs
+            yield historico, historico, "", "", chat.ultima_memoria_rag
             buffer = ""
 
     # Se sobrou buffer, envia o resto
     if buffer:
         resposta_acumulada += buffer
         historico[-1]["content"] = resposta_acumulada
-        yield historico, historico, "", ""
+        yield historico, historico, "", "", chat.ultima_memoria_rag
 
     elapsed_time = time.time() - start_time
     avg_time_per_token = elapsed_time / max(token_count, 1)
@@ -88,7 +88,7 @@ def responder(pergunta, historico):
     )
 
     # Última yield com métricas e input limpo
-    yield historico, historico, metricas, ""
+    yield historico, historico, metricas, "", chat.ultima_memoria_rag
 
 def carregar_historico():
     conversa = chat.memoria.get("conversa", [])
@@ -132,6 +132,9 @@ usuario_nome = gr.Textbox(label="Seu nome", value=USUARIO_PADRAO.get("nome", "")
 usuario_cor = gr.Textbox(label="Cor favorita", value=USUARIO_PADRAO.get("preferencias", {}).get("cor", ""))
 botao_usuario = gr.Button("Salvar usuário")
 metricas = gr.Textbox(label="Métricas de desempenho", interactive=False, lines=4)
+with gr.Accordion("Memória recuperada", open=False) as acc:
+    rag_box = gr.Markdown()
+    rag_box.render()
 
 with gr.Blocks(title="IA com Memória") as demo:
     gr.Markdown("## Assistente IA com múltiplas personalidades")
@@ -151,8 +154,9 @@ with gr.Blocks(title="IA com Memória") as demo:
     
     estado.render()
     metricas.render()
+    acc.render()
 
-    entrada.submit(fn=responder, inputs=[entrada, estado], outputs=[chatbot, estado, metricas, entrada])
+    entrada.submit(fn=responder, inputs=[entrada, estado], outputs=[chatbot, estado, metricas, entrada, rag_box])
     botao_carregar.click(fn=carregar_historico, inputs=[], outputs=[chatbot, estado])
     botao_excluir.click(fn=excluir_ultima_interacao, inputs=estado, outputs=[chatbot, estado])
     botao_usuario.click(fn=atualizar_usuario, inputs=[usuario_nome, usuario_cor], outputs=[chatbot, estado])
