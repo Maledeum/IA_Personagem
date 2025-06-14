@@ -3,6 +3,7 @@ import json
 import os
 import warnings
 import shutil
+import hashlib
 
 DEFAULT_MEMORY_DIR = "memory"
 DEFAULT_MEMORY_FILE = os.path.join(DEFAULT_MEMORY_DIR, "working_memory.json")
@@ -11,6 +12,40 @@ RAW_ROTATE = 500  # mensagens por arquivo raw
 EPISODE_SIZE = 10
 EPISODES_PER_BRANCH = 4
 BRANCHES_PER_GLOBAL = 4
+VECTOR_DIR_NAME = "vectors"
+EPISODIC_VECTOR_FILE = "episodic_vectors.json"
+HISTORICAL_VECTOR_FILE = "historical_vectors.json"
+
+
+def _text_embedding(text, size=32):
+    """Return a deterministic embedding list for *text*."""
+    digest = hashlib.sha256(text.encode("utf-8")).digest()
+    return [b / 255 for b in digest[:size]]
+
+
+def init_vector_store(base_dir):
+    """Ensure the vector directory exists for this personality."""
+    path = os.path.join(base_dir, VECTOR_DIR_NAME)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def add_episodic_embedding(base_dir, episodic_id, resumo):
+    """Append embedding for a new episodic summary."""
+    emb_dir = init_vector_store(base_dir)
+    file_path = os.path.join(emb_dir, EPISODIC_VECTOR_FILE)
+    data = _load_json(file_path, [])
+    data.append({"id": episodic_id, "embedding": _text_embedding(resumo)})
+    _save_json(data, file_path)
+
+
+def rebuild_historical_embeddings(base_dir):
+    """Recalculate embeddings for all historical summaries."""
+    emb_dir = init_vector_store(base_dir)
+    file_path = os.path.join(emb_dir, HISTORICAL_VECTOR_FILE)
+    historicos = _load_json(os.path.join(base_dir, "historical_summaries.json"), [])
+    data = [{"id": h["id"], "embedding": _text_embedding(h["summary"])} for h in historicos]
+    _save_json(data, file_path)
 
 def carregar_memoria(arquivo=DEFAULT_MEMORY_FILE):
     """Carrega o dicionário de memória persistido em *arquivo*.
@@ -96,6 +131,7 @@ def init_hierarchical(base_dir):
             _save_json([], path)
     if not os.path.exists(os.path.join(base_dir, "meta.json")):
         _save_meta({"current_raw": 1, "count_in_raw": 0, "last_id": 0}, base_dir)
+    init_vector_store(base_dir)
 
 
 def resetar_memoria_personagem(nome):
@@ -186,24 +222,28 @@ def _ler_raw_intervalo(base_dir, start_id, end_id):
 def _save_episodic_summary(base_dir, start_id, end_id, resumo):
     arquivo = os.path.join(base_dir, "episodic_summaries.json")
     episodios = _load_json(arquivo, [])
+    new_id = len(episodios) + 1
     episodios.append({
-        "id": len(episodios) + 1,
+        "id": new_id,
         "start_id": start_id,
         "end_id": end_id,
         "summary": resumo,
     })
     _save_json(episodios, arquivo)
+    return new_id
 
 
 def _save_branch_summary(base_dir, episodic_ids, resumo):
     arquivo = os.path.join(base_dir, "historical_summaries.json")
     branches = _load_json(arquivo, [])
+    new_id = len(branches) + 1
     branches.append({
-        "id": len(branches) + 1,
+        "id": new_id,
         "episodic_ids": episodic_ids,
         "summary": resumo,
     })
     _save_json(branches, arquivo)
+    return new_id
 
 
 def _save_global_summary(base_dir, branch_ids, resumo):
@@ -225,7 +265,8 @@ def gerar_resumo_episodio(base_dir, resumo_func):
     mensagens = _ler_raw_intervalo(base_dir, start_id, meta["last_id"])
     trechos = [f"{'Usuário' if m['role']=='user' else 'IA'}: {m['content']}" for m in mensagens]
     resumo = resumo_func(trechos)
-    _save_episodic_summary(base_dir, start_id, meta["last_id"], resumo)
+    eid = _save_episodic_summary(base_dir, start_id, meta["last_id"], resumo)
+    add_episodic_embedding(base_dir, eid, resumo)
     return resumo
 
 
@@ -239,6 +280,7 @@ def gerar_resumo_branch(base_dir, resumo_func):
     trechos = [e["summary"] for e in subset]
     resumo = resumo_func(trechos)
     _save_branch_summary(base_dir, [e["id"] for e in subset], resumo)
+    rebuild_historical_embeddings(base_dir)
     return resumo
 
 
