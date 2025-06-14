@@ -56,6 +56,52 @@ def rebuild_historical_embeddings(base_dir):
     data = [{"id": h["id"], "embedding": _text_embedding(h["summary"])} for h in historicos]
     _save_json(data, file_path)
 
+
+def _cosine_similarity(a, b):
+    """Calculate cosine similarity between two vectors."""
+    import math
+
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(y * y for y in b))
+    if na == 0 or nb == 0:
+        return 0.0
+    return dot / (na * nb)
+
+
+def buscar_trechos(query, base_dir, top_n=3):
+    """Retorna os *top_n* trechos mais similares ao *query*."""
+    query_emb = _text_embedding(query)
+
+    vec_file = os.path.join(base_dir, VECTOR_DIR_NAME, EPISODIC_VECTOR_FILE)
+    episodic_vecs = _load_json(vec_file, [])
+    if not episodic_vecs:
+        return []
+
+    scores = []
+    for item in episodic_vecs:
+        sim = _cosine_similarity(query_emb, item.get("embedding", []))
+        scores.append((sim, item["id"]))
+    scores.sort(reverse=True)
+    top_ids = [eid for _, eid in scores[:top_n]]
+
+    episodios = _load_json(os.path.join(base_dir, "episodic_summaries.json"), [])
+    id_range = {e["id"]: (e["start_id"], e["end_id"]) for e in episodios}
+
+    trechos = []
+    for eid in top_ids:
+        if eid not in id_range:
+            continue
+        start_id, end_id = id_range[eid]
+        mensagens = _ler_raw_intervalo(base_dir, start_id, end_id)
+        trecho = "\n".join(
+            f"{'Usuário' if m['role']=='user' else 'IA'}: {m['content']}" for m in mensagens
+        )
+        trechos.append(trecho)
+    return trechos
+
 def carregar_memoria(arquivo=DEFAULT_MEMORY_FILE):
     """Carrega o dicionário de memória persistido em *arquivo*.
 
