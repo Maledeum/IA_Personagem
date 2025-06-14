@@ -44,6 +44,13 @@ python interface.py
 
 A aplicação abrirá um servidor local com chat em tempo real.
 
+Se o serviço de LLM estiver rodando em outro endereço, defina a variável de
+ambiente `LM_API_URL` antes de iniciar o programa, por exemplo:
+
+```bash
+LM_API_URL=http://meu-host:1234/v1/chat/completions python interface.py
+```
+
 ## Verificação Rápida
 
 Para verificar a integridade do código Python:
