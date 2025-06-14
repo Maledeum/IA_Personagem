@@ -39,6 +39,15 @@ def add_episodic_embedding(base_dir, episodic_id, resumo):
     _save_json(data, file_path)
 
 
+def rebuild_episodic_embeddings(base_dir):
+    """Recalculate embeddings for all episodic summaries."""
+    emb_dir = init_vector_store(base_dir)
+    file_path = os.path.join(emb_dir, EPISODIC_VECTOR_FILE)
+    episodios = _load_json(os.path.join(base_dir, "episodic_summaries.json"), [])
+    data = [{"id": e["id"], "embedding": _text_embedding(e["summary"])} for e in episodios]
+    _save_json(data, file_path)
+
+
 def rebuild_historical_embeddings(base_dir):
     """Recalculate embeddings for all historical summaries."""
     emb_dir = init_vector_store(base_dir)
@@ -281,6 +290,7 @@ def gerar_resumo_branch(base_dir, resumo_func):
     resumo = resumo_func(trechos)
     _save_branch_summary(base_dir, [e["id"] for e in subset], resumo)
     rebuild_historical_embeddings(base_dir)
+    rebuild_episodic_embeddings(base_dir)
     return resumo
 
 

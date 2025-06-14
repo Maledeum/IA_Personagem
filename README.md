@@ -48,6 +48,15 @@ Para apagar todos os arquivos de memória de um personagem e começar do zero:
 python tools/reset_memory.py nome_da_personalidade
 ```
 
+### Vetores de resumo
+
+Os resumos gerados são convertidos em embeddings determinísticos e
+armazenados em `memory/<personagem>/vectors/`. Existem dois arquivos:
+`episodic_vectors.json` e `historical_vectors.json`, cada um contendo o
+`id` do resumo e seu vetor. Com o `id` é possível consultar o intervalo
+de mensagens correspondentes nos arquivos `raw`, permitindo recuperar a
+memória original.
+
 
 ## Verificação Rápida
 
