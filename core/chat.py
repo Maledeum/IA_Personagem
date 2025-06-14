@@ -10,7 +10,6 @@ from core.memoria import (
     gerar_resumo_episodio,
     gerar_resumo_branch,
     gerar_resumo_global,
-    buscar_trechos,
 )
 from core.contexto import montar_contexto
 from core.resumo import (
@@ -34,24 +33,16 @@ memory_file = os.path.join(memory_base, "working_memory.json")
 init_hierarchical(memory_base)
 memoria = carregar_memoria(memory_file)
 
-# Últimos trechos recuperados pelo RAG
-ultima_busca = []
-
-def get_ultima_busca():
-    """Retorna os trechos recuperados mais recentemente."""
-    return ultima_busca
-
 def set_system_prompt(novo_prompt):
     global system_prompt
     system_prompt = novo_prompt
 
 def set_memory_file(caminho):
-    global memory_file, memoria, memory_base, ultima_busca
+    global memory_file, memoria, memory_base
     memory_base = caminho
     memory_file = os.path.join(memory_base, "working_memory.json")
     init_hierarchical(memory_base)
     memoria = carregar_memoria(memory_file)
-    ultima_busca = []
 
 def carregar_personalidade(arquivo_json):
     with open(arquivo_json, "r", encoding="utf-8") as f:
@@ -61,14 +52,9 @@ def carregar_personalidade(arquivo_json):
     set_memory_file(os.path.join("memory", nome))
 
 def conversar(pergunta):
-    global memoria, ultima_busca
-
-    ultima_busca = buscar_trechos(pergunta, memory_base)
+    global memoria
 
     contexto_memoria = montar_contexto(memoria)
-    if ultima_busca:
-        contexto_memoria += "\nTrechos relevantes:\n" + "\n----\n".join(ultima_busca)
-
     mensagens = [{"role": "system", "content": system_prompt + "\n\n" + contexto_memoria}]
     memoria["contador_interacoes"] += 1
     memoria["conversa"] = memoria.get("conversa", [])[-20:]
