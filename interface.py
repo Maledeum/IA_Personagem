@@ -9,8 +9,11 @@ from core.memoria import (
     remover_ultimas_raw,
     resetar_memoria_personagem,
 )
-from transformers import GPT2TokenizerFast
-tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+try:
+    from transformers import GPT2TokenizerFast
+    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", local_files_only=True)
+except Exception:
+    tokenizer = None
 
 PERSONALIDADES_DIR = "personalidades"
 
