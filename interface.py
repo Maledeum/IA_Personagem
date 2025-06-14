@@ -99,6 +99,8 @@ def excluir_ultima_interacao(historico):
         del historico[-2:]
         if chat.memoria.get("conversa"):
             chat.memoria["conversa"] = chat.memoria["conversa"][:-2]
+            if chat.memoria.get("contador_interacoes", 0) > 0:
+                chat.memoria["contador_interacoes"] -= 1
             remover_ultimas_raw(chat.memory_base, 2)
             salvar_memoria(chat.memoria, chat.memory_file)
     return historico, historico
