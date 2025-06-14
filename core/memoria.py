@@ -2,6 +2,7 @@
 import json
 import os
 import warnings
+import shutil
 
 DEFAULT_MEMORY_DIR = "memory"
 DEFAULT_MEMORY_FILE = os.path.join(DEFAULT_MEMORY_DIR, "working_memory.json")
@@ -95,6 +96,17 @@ def init_hierarchical(base_dir):
             _save_json([], path)
     if not os.path.exists(os.path.join(base_dir, "meta.json")):
         _save_meta({"current_raw": 1, "count_in_raw": 0, "last_id": 0}, base_dir)
+
+
+def resetar_memoria_personagem(nome):
+    """Apaga e recria todos os arquivos de memória do *nome* informado."""
+    base = os.path.join(DEFAULT_MEMORY_DIR, nome)
+    if os.path.exists(base):
+        shutil.rmtree(base)
+    init_hierarchical(base)
+    caminho = os.path.join(base, "working_memory.json")
+    memoria = carregar_memoria(caminho)
+    salvar_memoria(memoria, caminho)
 
 
 def registrar_raw(role, content, base_dir):

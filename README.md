@@ -19,7 +19,7 @@ pip install -r requirements.txt
 - `personalidades/` – arquivos JSON com as personalidades disponíveis
 - `interface.py` – versão com interface web (Gradio)
 - `main.py` – versão para uso no terminal
-- `tools/` – scripts auxiliares para depuração e testes
+- `tools/` – scripts auxiliares para depuração e testes (inclui `reset_memory.py` para limpar a memória de um personagem)
 
 O arquivo de memória agora é salvo em `memory/<personagem>.json` e será criado automaticamente na primeira execução de cada personalidade.
 
@@ -39,6 +39,15 @@ python interface.py
 ```
 
 A aplicação abrirá um servidor local com chat em tempo real.
+
+### Resetar memória
+
+Para apagar todos os arquivos de memória de um personagem e começar do zero:
+
+```bash
+python tools/reset_memory.py nome_da_personalidade
+```
+
 
 ## Verificação Rápida
 
