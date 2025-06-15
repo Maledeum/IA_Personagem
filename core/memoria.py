@@ -219,59 +219,48 @@ def _cosine_similarity(a, b):
 
 
 def buscar_trechos(query, base_dir, top_n=6):
-    """Retorna os *top_n* trechos mais similares ao *query*."""
+    """Retorna os *top_n* trechos mais similares ao *query*.
+
+    A busca agora é feita diretamente sobre os embeddings dos chunks de
+    mensagens brutas, permitindo recuperar trechos mais específicos e
+    relevantes para a pergunta do usuário.
+    """
+
     query_emb = _text_embedding(query)
 
     emb_dir = os.path.join(base_dir, VECTOR_DIR_NAME)
-    vec_file = os.path.join(emb_dir, EPISODIC_VECTOR_FILE)
-    episodic_vecs = _load_json(vec_file, [])
-    if not episodic_vecs:
-        return []
-
-    faiss_path, _ = _faiss_paths(base_dir, EPISODIC_FAISS_FILE)
-    if _HAVE_FAISS and os.path.exists(faiss_path):
-        top_ids = _faiss_search(base_dir, EPISODIC_FAISS_FILE, query_emb, top_n)
-    else:
-        scores = []
-        for item in episodic_vecs:
-            sim = _cosine_similarity(query_emb, item.get("embedding", []))
-            scores.append((sim, item["id"]))
-        scores.sort(reverse=True)
-        top_ids = [eid for _, eid in scores[:top_n]]
-
-    episodios = _load_json(os.path.join(base_dir, "episodic_summaries.json"), [])
-    id_range = {e["id"]: (e["start_id"], e["end_id"]) for e in episodios}
-
-    raw_vec_file = os.path.join(emb_dir, RAW_VECTOR_FILE)
-    raw_vecs = _load_json(raw_vec_file, [])
-    raw_map = {r["id"]: r.get("embedding", []) for r in raw_vecs}
-
     chunk_vec_file = os.path.join(emb_dir, RAW_CHUNK_VECTOR_FILE)
     chunk_vecs = _load_json(chunk_vec_file, [])
-    chunk_map = {}
-    for ch in chunk_vecs:
-        chunk_map.setdefault(ch.get("raw_id"), []).append(ch)
+    if not chunk_vecs:
+        return []
+
+    # Mapa id -> info do chunk para rápido acesso
+    chunk_by_id = {c["id"]: c for c in chunk_vecs}
+
+    if _HAVE_FAISS and os.path.exists(os.path.join(emb_dir, RAW_CHUNK_FAISS_FILE)):
+        top_ids = _faiss_search(base_dir, RAW_CHUNK_FAISS_FILE, query_emb, top_n)
+    else:
+        scores = []
+        for ch in chunk_vecs:
+            sim = _cosine_similarity(query_emb, ch.get("embedding", []))
+            scores.append((sim, ch["id"]))
+        scores.sort(reverse=True)
+        top_ids = [cid for _, cid in scores[:top_n]]
 
     trechos = []
-    for eid in top_ids:
-        if eid not in id_range:
+    usados = set()
+    for cid in top_ids:
+        chunk = chunk_by_id.get(cid)
+        if not chunk:
             continue
-        start_id, end_id = id_range[eid]
-        mensagens = _ler_raw_intervalo(base_dir, start_id, end_id)
-        best_chunk = None
-        best_role = "user"
-        best_sim = -1.0
-        for msg in mensagens:
-            for ch in chunk_map.get(msg["id"], []):
-                emb = ch.get("embedding")
-                sim = _cosine_similarity(query_emb, emb)
-                if sim > best_sim:
-                    best_sim = sim
-                    best_chunk = ch
-                    best_role = msg["role"]
-        if best_chunk:
-            prefix = "Usuário" if best_role == "user" else "IA"
-            trechos.append(f"{prefix}: {best_chunk['text']}")
+        raw_id = chunk.get("raw_id")
+        if raw_id in usados:
+            continue
+        usados.add(raw_id)
+        msgs = _ler_raw_intervalo(base_dir, raw_id, raw_id)
+        role = msgs[0]["role"] if msgs else "user"
+        prefix = "Usuário" if role == "user" else "IA"
+        trechos.append(f"{prefix}: {chunk['text']}")
     return trechos
 
 def carregar_memoria(arquivo=DEFAULT_MEMORY_FILE):
