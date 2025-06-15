@@ -2,3 +2,4 @@ requests
 gradio
 psutil
 transformers
+faiss-cpu

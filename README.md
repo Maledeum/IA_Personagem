@@ -5,7 +5,7 @@ IA_Personagem é uma plataforma de chat em que cada personagem é uma IA com per
 ## Requisitos
 
 - Python 3.10+
-- Dependências: `requests`, `gradio`, `psutil`, `transformers`
+- Dependências: `requests`, `gradio`, `psutil`, `transformers`, `faiss-cpu`
 
 Instale as dependências com:
 
