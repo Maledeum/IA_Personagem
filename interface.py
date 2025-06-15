@@ -106,19 +106,24 @@ def excluir_ultima_interacao(historico):
             salvar_memoria(chat.memoria, chat.memory_file)
     return historico, historico
 
+def mostrar_confirmacao():
+    """Exibe o botão de confirmação para resetar a memória."""
+    return gr.update(visible=True)
+
+
 def resetar_memoria(nome):
     """Remove todos os arquivos de memória do personagem e reinicia"""
     resetar_memoria_personagem(PERSONALIDADES[nome]["id"])
     inicializar_personalidade(nome)
-    return [], [], gr.update(value=False), gr.update(interactive=False)
+    return [], [], gr.update(visible=False)
 
 chatbot = gr.Chatbot(label="Assistente IA", type="messages")
 entrada = gr.Textbox(placeholder="Digite sua pergunta...", label="Você:")
 estado = gr.State([])
 botao_carregar = gr.Button("🔄 Carregar histórico")
 botao_excluir = gr.Button("🗑️ Excluir última mensagem")
-botao_reset = gr.Button("🧹 Resetar memória", interactive=False)
-confirm_reset = gr.Checkbox(label="Confirmar resetar memória")
+botao_reset = gr.Button("🧹 Resetar memória")
+botao_confirm_reset = gr.Button("⚠️ Confirmar reset", visible=False)
 seletor = gr.Dropdown(list(PERSONALIDADES.keys()), label="Personalidade", value=PERSONALIDADE_PADRAO)
 metricas = gr.Textbox(label="Métricas de desempenho", interactive=False, lines=4)
 
@@ -134,7 +139,7 @@ with gr.Blocks(title="IA com Memória") as demo:
         botao_carregar.render()
         botao_excluir.render()
         botao_reset.render()
-        confirm_reset.render()
+        botao_confirm_reset.render()
     
     estado.render()
     metricas.render()
@@ -142,11 +147,11 @@ with gr.Blocks(title="IA com Memória") as demo:
     entrada.submit(fn=responder, inputs=[entrada, estado], outputs=[chatbot, estado, metricas, entrada])
     botao_carregar.click(fn=carregar_historico, inputs=[], outputs=[chatbot, estado])
     botao_excluir.click(fn=excluir_ultima_interacao, inputs=estado, outputs=[chatbot, estado])
-    confirm_reset.change(lambda c: gr.update(interactive=c), inputs=confirm_reset, outputs=botao_reset)
-    botao_reset.click(
+    botao_reset.click(fn=mostrar_confirmacao, inputs=None, outputs=botao_confirm_reset)
+    botao_confirm_reset.click(
         fn=resetar_memoria,
         inputs=seletor,
-        outputs=[chatbot, estado, confirm_reset, botao_reset],
+        outputs=[chatbot, estado, botao_confirm_reset],
     )
     seletor.change(fn=escolher_personalidade, inputs=seletor, outputs=[chatbot, estado])
 
