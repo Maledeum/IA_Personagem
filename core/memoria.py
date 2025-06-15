@@ -129,12 +129,10 @@ def carregar_memoria(arquivo=DEFAULT_MEMORY_FILE):
     memoria.setdefault("personagem", {})
     memoria.setdefault("conversa", [])
     memoria.setdefault("resumo_breve", [])
-    memoria.setdefault("resumo_antigo", [])
     memoria.setdefault("contador_interacoes", 0)
 
     # Limita o tamanho das listas de resumos para evitar crescimento indefinido
     memoria["resumo_breve"] = memoria.get("resumo_breve", [])[-MAX_RESUMOS:]
-    memoria["resumo_antigo"] = memoria.get("resumo_antigo", [])[-MAX_RESUMOS:]
 
     return memoria
 
