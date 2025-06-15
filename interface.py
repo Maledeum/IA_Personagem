@@ -110,14 +110,15 @@ def resetar_memoria(nome):
     """Remove todos os arquivos de memória do personagem e reinicia"""
     resetar_memoria_personagem(PERSONALIDADES[nome]["id"])
     inicializar_personalidade(nome)
-    return [], []
+    return [], [], gr.update(value=False), gr.update(interactive=False)
 
 chatbot = gr.Chatbot(label="Assistente IA", type="messages")
 entrada = gr.Textbox(placeholder="Digite sua pergunta...", label="Você:")
 estado = gr.State([])
 botao_carregar = gr.Button("🔄 Carregar histórico")
 botao_excluir = gr.Button("🗑️ Excluir última mensagem")
-botao_reset = gr.Button("🧹 Resetar memória")
+botao_reset = gr.Button("🧹 Resetar memória", interactive=False)
+confirm_reset = gr.Checkbox(label="Confirmar resetar memória")
 seletor = gr.Dropdown(list(PERSONALIDADES.keys()), label="Personalidade", value=PERSONALIDADE_PADRAO)
 metricas = gr.Textbox(label="Métricas de desempenho", interactive=False, lines=4)
 
@@ -133,6 +134,7 @@ with gr.Blocks(title="IA com Memória") as demo:
         botao_carregar.render()
         botao_excluir.render()
         botao_reset.render()
+        confirm_reset.render()
     
     estado.render()
     metricas.render()
@@ -140,7 +142,12 @@ with gr.Blocks(title="IA com Memória") as demo:
     entrada.submit(fn=responder, inputs=[entrada, estado], outputs=[chatbot, estado, metricas, entrada])
     botao_carregar.click(fn=carregar_historico, inputs=[], outputs=[chatbot, estado])
     botao_excluir.click(fn=excluir_ultima_interacao, inputs=estado, outputs=[chatbot, estado])
-    botao_reset.click(fn=resetar_memoria, inputs=seletor, outputs=[chatbot, estado])
+    confirm_reset.change(lambda c: gr.update(interactive=c), inputs=confirm_reset, outputs=botao_reset)
+    botao_reset.click(
+        fn=resetar_memoria,
+        inputs=seletor,
+        outputs=[chatbot, estado, confirm_reset, botao_reset],
+    )
     seletor.change(fn=escolher_personalidade, inputs=seletor, outputs=[chatbot, estado])
 
 if __name__ == "__main__":
