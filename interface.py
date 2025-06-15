@@ -62,14 +62,14 @@ def responder(pergunta, historico):
         if len(buffer) > 20 or token.endswith(('.', '!', '?')):
             resposta_acumulada += buffer
             historico[-1]["content"] = resposta_acumulada
-            yield historico, historico, "", "", ""  # mantém os 5 outputs
+            yield historico, historico, "", ""  # mantém os 4 outputs
             buffer = ""
 
     # Se sobrou buffer, envia o resto
     if buffer:
         resposta_acumulada += buffer
         historico[-1]["content"] = resposta_acumulada
-        yield historico, historico, "", "", ""
+        yield historico, historico, "", ""
 
     elapsed_time = time.time() - start_time
     avg_time_per_token = elapsed_time / max(token_count, 1)
@@ -82,10 +82,8 @@ def responder(pergunta, historico):
         f"💾 RAM: {ram_usage_mb:.1f} MB"
     )
 
-    rag_info = "\n\n".join(chat.get_ultima_busca())
-
     # Última yield com métricas e input limpo
-    yield historico, historico, rag_info, metricas, ""
+    yield historico, historico, metricas, ""
 
 def carregar_historico():
     conversa = chat.memoria.get("conversa", [])
@@ -93,7 +91,7 @@ def carregar_historico():
     for msg in conversa:
         if msg["role"] in ["user", "assistant"]:
             historico.append({"role": msg["role"], "content": msg["content"]})
-    return historico, historico, "", "", ""
+    return historico, historico
 
 def escolher_personalidade(nome):
     inicializar_personalidade(nome)
@@ -106,13 +104,13 @@ def excluir_ultima_interacao(historico):
             chat.memoria["conversa"] = chat.memoria["conversa"][:-2]
             remover_ultimas_raw(chat.memory_base, 2)
             salvar_memoria(chat.memoria, chat.memory_file)
-    return historico, historico, "", "", ""
+    return historico, historico
 
 def resetar_memoria(nome):
     """Remove todos os arquivos de memória do personagem e reinicia"""
     resetar_memoria_personagem(PERSONALIDADES[nome]["id"])
     inicializar_personalidade(nome)
-    return [], [], "", "", ""
+    return [], []
 
 chatbot = gr.Chatbot(label="Assistente IA", type="messages")
 entrada = gr.Textbox(placeholder="Digite sua pergunta...", label="Você:")
@@ -122,8 +120,6 @@ botao_excluir = gr.Button("🗑️ Excluir última mensagem")
 botao_reset = gr.Button("🧹 Resetar memória")
 seletor = gr.Dropdown(list(PERSONALIDADES.keys()), label="Personalidade", value=PERSONALIDADE_PADRAO)
 metricas = gr.Textbox(label="Métricas de desempenho", interactive=False, lines=4)
-with gr.Accordion("Trechos RAG", open=False) as rag_section:
-    rag_text = gr.Markdown()
 
 with gr.Blocks(title="IA com Memória") as demo:
     gr.Markdown("## Assistente IA com múltiplas personalidades")
@@ -140,36 +136,12 @@ with gr.Blocks(title="IA com Memória") as demo:
     
     estado.render()
     metricas.render()
-    rag_section.render()
 
-    entrada.submit(
-        fn=responder,
-        inputs=[entrada, estado],
-        outputs=[chatbot, estado, rag_text, metricas, entrada],
-    )
-    botao_carregar.click(
-        fn=carregar_historico,
-        inputs=[],
-        outputs=[chatbot, estado, rag_text, metricas, entrada],
-    )
-    botao_excluir.click(
-        fn=excluir_ultima_interacao,
-        inputs=estado,
-        outputs=[chatbot, estado, rag_text, metricas, entrada],
-    )
-    botao_reset.click(
-        fn=resetar_memoria,
-        inputs=seletor,
-        outputs=[chatbot, estado, rag_text, metricas, entrada],
-    )
-    seletor.change(
-        fn=escolher_personalidade,
-        inputs=seletor,
-        outputs=[chatbot, estado, rag_text, metricas, entrada],
-    )
+    entrada.submit(fn=responder, inputs=[entrada, estado], outputs=[chatbot, estado, metricas, entrada])
+    botao_carregar.click(fn=carregar_historico, inputs=[], outputs=[chatbot, estado])
+    botao_excluir.click(fn=excluir_ultima_interacao, inputs=estado, outputs=[chatbot, estado])
+    botao_reset.click(fn=resetar_memoria, inputs=seletor, outputs=[chatbot, estado])
+    seletor.change(fn=escolher_personalidade, inputs=seletor, outputs=[chatbot, estado])
 
 if __name__ == "__main__":
     demo.launch()
-
-
-
