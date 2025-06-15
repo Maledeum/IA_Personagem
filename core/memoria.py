@@ -4,6 +4,14 @@ import os
 import warnings
 import shutil
 import hashlib
+from typing import List, Tuple
+
+try:
+    import faiss  # type: ignore
+    _HAVE_FAISS = True
+except Exception:  # pragma: no cover - optional dependency
+    faiss = None
+    _HAVE_FAISS = False
 
 DEFAULT_MEMORY_DIR = "memory"
 DEFAULT_MEMORY_FILE = os.path.join(DEFAULT_MEMORY_DIR, "working_memory.json")
@@ -15,6 +23,9 @@ BRANCHES_PER_GLOBAL = 4
 VECTOR_DIR_NAME = "vectors"
 EPISODIC_VECTOR_FILE = "episodic_vectors.json"
 HISTORICAL_VECTOR_FILE = "historical_vectors.json"
+RAW_VECTOR_FILE = "raw_vectors.json"
+EPISODIC_FAISS_FILE = "episodic_vectors.faiss"
+RAW_FAISS_FILE = "raw_vectors.faiss"
 MAX_RESUMOS = 5
 
 
@@ -31,13 +42,71 @@ def init_vector_store(base_dir):
     return path
 
 
+def _faiss_paths(base_dir: str, filename: str) -> Tuple[str, str]:
+    directory = init_vector_store(base_dir)
+    index_path = os.path.join(directory, filename)
+    id_path = index_path + "_ids.json"
+    return index_path, id_path
+
+
+def _faiss_add_vector(base_dir: str, filename: str, vec: List[float], item_id: int) -> None:
+    if not _HAVE_FAISS:
+        return
+    import numpy as np
+
+    index_path, id_path = _faiss_paths(base_dir, filename)
+    if os.path.exists(index_path):
+        index = faiss.read_index(index_path)
+        ids = _load_json(id_path, [])
+    else:
+        index = faiss.IndexFlatIP(len(vec))
+        ids = []
+    index.add(np.array([vec], dtype="float32"))
+    ids.append(item_id)
+    faiss.write_index(index, index_path)
+    _save_json(ids, id_path)
+
+
+def _faiss_search(base_dir: str, filename: str, vec: List[float], top_n: int) -> List[int]:
+    if not _HAVE_FAISS:
+        return []
+    import numpy as np
+
+    index_path, id_path = _faiss_paths(base_dir, filename)
+    if not os.path.exists(index_path):
+        return []
+    index = faiss.read_index(index_path)
+    ids = _load_json(id_path, [])
+    if not ids:
+        return []
+    D, I = index.search(np.array([vec], dtype="float32"), top_n)
+    result = []
+    for idx in I[0]:
+        if 0 <= idx < len(ids):
+            result.append(ids[idx])
+    return result
+
+
 def add_episodic_embedding(base_dir, episodic_id, resumo):
     """Append embedding for a new episodic summary."""
     emb_dir = init_vector_store(base_dir)
     file_path = os.path.join(emb_dir, EPISODIC_VECTOR_FILE)
     data = _load_json(file_path, [])
-    data.append({"id": episodic_id, "embedding": _text_embedding(resumo)})
+    emb = _text_embedding(resumo)
+    data.append({"id": episodic_id, "embedding": emb})
     _save_json(data, file_path)
+    _faiss_add_vector(base_dir, EPISODIC_FAISS_FILE, emb, episodic_id)
+
+
+def add_raw_embedding(base_dir: str, msg_id: int, content: str) -> None:
+    """Store embedding for a raw message."""
+    emb_dir = init_vector_store(base_dir)
+    file_path = os.path.join(emb_dir, RAW_VECTOR_FILE)
+    data = _load_json(file_path, [])
+    emb = _text_embedding(content)
+    data.append({"id": msg_id, "embedding": emb})
+    _save_json(data, file_path)
+    _faiss_add_vector(base_dir, RAW_FAISS_FILE, emb, msg_id)
 
 
 def rebuild_episodic_embeddings(base_dir):
@@ -47,6 +116,12 @@ def rebuild_episodic_embeddings(base_dir):
     episodios = _load_json(os.path.join(base_dir, "episodic_summaries.json"), [])
     data = [{"id": e["id"], "embedding": _text_embedding(e["summary"])} for e in episodios]
     _save_json(data, file_path)
+    if _HAVE_FAISS:
+        index_path, _ = _faiss_paths(base_dir, EPISODIC_FAISS_FILE)
+        if os.path.exists(index_path):
+            os.remove(index_path)
+        for item in data:
+            _faiss_add_vector(base_dir, EPISODIC_FAISS_FILE, item["embedding"], item["id"])
 
 
 def rebuild_historical_embeddings(base_dir):
@@ -56,6 +131,26 @@ def rebuild_historical_embeddings(base_dir):
     historicos = _load_json(os.path.join(base_dir, "historical_summaries.json"), [])
     data = [{"id": h["id"], "embedding": _text_embedding(h["summary"])} for h in historicos]
     _save_json(data, file_path)
+
+
+def rebuild_raw_embeddings(base_dir: str) -> None:
+    """Recalculate embeddings for all raw messages."""
+    emb_dir = init_vector_store(base_dir)
+    file_path = os.path.join(emb_dir, RAW_VECTOR_FILE)
+    meta = _load_meta(base_dir)
+    data = []
+    for idx in range(1, meta["last_id"] + 1):
+        mensagens = _ler_raw_intervalo(base_dir, idx, idx)
+        if mensagens:
+            m = mensagens[0]
+            data.append({"id": m["id"], "embedding": _text_embedding(m["content"])})
+    _save_json(data, file_path)
+    if _HAVE_FAISS:
+        index_path, _ = _faiss_paths(base_dir, RAW_FAISS_FILE)
+        if os.path.exists(index_path):
+            os.remove(index_path)
+        for item in data:
+            _faiss_add_vector(base_dir, RAW_FAISS_FILE, item["embedding"], item["id"])
 
 
 def _cosine_similarity(a, b):
@@ -76,20 +171,29 @@ def buscar_trechos(query, base_dir, top_n=3):
     """Retorna os *top_n* trechos mais similares ao *query*."""
     query_emb = _text_embedding(query)
 
-    vec_file = os.path.join(base_dir, VECTOR_DIR_NAME, EPISODIC_VECTOR_FILE)
+    emb_dir = os.path.join(base_dir, VECTOR_DIR_NAME)
+    vec_file = os.path.join(emb_dir, EPISODIC_VECTOR_FILE)
     episodic_vecs = _load_json(vec_file, [])
     if not episodic_vecs:
         return []
 
-    scores = []
-    for item in episodic_vecs:
-        sim = _cosine_similarity(query_emb, item.get("embedding", []))
-        scores.append((sim, item["id"]))
-    scores.sort(reverse=True)
-    top_ids = [eid for _, eid in scores[:top_n]]
+    faiss_path, _ = _faiss_paths(base_dir, EPISODIC_FAISS_FILE)
+    if _HAVE_FAISS and os.path.exists(faiss_path):
+        top_ids = _faiss_search(base_dir, EPISODIC_FAISS_FILE, query_emb, top_n)
+    else:
+        scores = []
+        for item in episodic_vecs:
+            sim = _cosine_similarity(query_emb, item.get("embedding", []))
+            scores.append((sim, item["id"]))
+        scores.sort(reverse=True)
+        top_ids = [eid for _, eid in scores[:top_n]]
 
     episodios = _load_json(os.path.join(base_dir, "episodic_summaries.json"), [])
     id_range = {e["id"]: (e["start_id"], e["end_id"]) for e in episodios}
+
+    raw_vec_file = os.path.join(emb_dir, RAW_VECTOR_FILE)
+    raw_vecs = _load_json(raw_vec_file, [])
+    raw_map = {r["id"]: r.get("embedding", []) for r in raw_vecs}
 
     trechos = []
     for eid in top_ids:
@@ -97,10 +201,20 @@ def buscar_trechos(query, base_dir, top_n=3):
             continue
         start_id, end_id = id_range[eid]
         mensagens = _ler_raw_intervalo(base_dir, start_id, end_id)
-        trecho = "\n".join(
-            f"{'Usuário' if m['role']=='user' else 'IA'}: {m['content']}" for m in mensagens
-        )
-        trechos.append(trecho)
+        best_msg = None
+        best_sim = -1.0
+        for msg in mensagens:
+            emb = raw_map.get(msg["id"])
+            if not emb:
+                continue
+            sim = _cosine_similarity(query_emb, emb)
+            if sim > best_sim:
+                best_sim = sim
+                best_msg = msg
+        if best_msg:
+            trechos.append(
+                f"{'Usuário' if best_msg['role']=='user' else 'IA'}: {best_msg['content']}"
+            )
     return trechos
 
 def carregar_memoria(arquivo=DEFAULT_MEMORY_FILE):
@@ -190,6 +304,11 @@ def init_hierarchical(base_dir):
     if not os.path.exists(os.path.join(base_dir, "meta.json")):
         _save_meta({"current_raw": 1, "count_in_raw": 0, "last_id": 0}, base_dir)
     init_vector_store(base_dir)
+    # create empty vector files
+    for fname in [EPISODIC_VECTOR_FILE, RAW_VECTOR_FILE]:
+        path = os.path.join(base_dir, VECTOR_DIR_NAME, fname)
+        if not os.path.exists(path):
+            _save_json([], path)
 
 
 def resetar_memoria_personagem(nome):
@@ -208,6 +327,7 @@ def registrar_raw(role, content, base_dir):
     msg_id = meta["last_id"] + 1
     raw_file = os.path.join(base_dir, "raw", f"raw_{meta['current_raw']}.jsonl")
     _append_jsonl(raw_file, {"id": msg_id, "role": role, "content": content})
+    add_raw_embedding(base_dir, msg_id, content)
     meta["last_id"] = msg_id
     meta["count_in_raw"] += 1
     if meta["count_in_raw"] >= RAW_ROTATE:
