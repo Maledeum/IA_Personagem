@@ -76,14 +76,15 @@ def conversar(pergunta):
     memoria["conversa"].append({"role": "assistant", "content": resposta})
 
     if memoria["contador_interacoes"] % 15 == 0:
-        trechos = [f"{'Usuário' if m['role']=='user' else 'IA'}: {m['content']}" for m in memoria["conversa"]]
+        # cria nova lista a cada busca para evitar acumulo desnecessário
+        trechos = [
+            f"{'Usuário' if m['role']=='user' else 'IA'}: {m['content']}"
+            for m in memoria["conversa"]
+        ]
         resumo = gerar_resumo_com_ia(trechos)
         memoria["resumo_breve"].append(resumo)
         if len(memoria["resumo_breve"]) > 10:
-            antigos = memoria["resumo_breve"][:3]
-            resumo_antigo = gerar_resumo_com_ia(antigos)
-            memoria["resumo_antigo"].append(resumo_antigo)
-            memoria["resumo_breve"] = memoria["resumo_breve"][3:]
+            memoria["resumo_breve"] = memoria["resumo_breve"][-10:]
 
     salvar_memoria(memoria, memory_file)
     return resposta

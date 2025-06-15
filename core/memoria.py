@@ -15,13 +15,11 @@ def carregar_memoria(arquivo=DEFAULT_MEMORY_FILE):
             "personagem": {},
             "conversa": [],
             "resumo_breve": [],
-            "resumo_antigo": [],
             "contador_interacoes": 0
         }
 
     # Garante que todas as chaves existam mesmo se o arquivo já existia
     memoria.setdefault("resumo_breve", [])
-    memoria.setdefault("resumo_antigo", [])
     memoria.setdefault("conversa", [])
     memoria.setdefault("contador_interacoes", 0)
 
