@@ -15,6 +15,7 @@ BRANCHES_PER_GLOBAL = 4
 VECTOR_DIR_NAME = "vectors"
 EPISODIC_VECTOR_FILE = "episodic_vectors.json"
 HISTORICAL_VECTOR_FILE = "historical_vectors.json"
+MAX_RESUMOS = 5
 
 
 def _text_embedding(text, size=32):
@@ -130,6 +131,10 @@ def carregar_memoria(arquivo=DEFAULT_MEMORY_FILE):
     memoria.setdefault("resumo_breve", [])
     memoria.setdefault("resumo_antigo", [])
     memoria.setdefault("contador_interacoes", 0)
+
+    # Limita o tamanho das listas de resumos para evitar crescimento indefinido
+    memoria["resumo_breve"] = memoria.get("resumo_breve", [])[-MAX_RESUMOS:]
+    memoria["resumo_antigo"] = memoria.get("resumo_antigo", [])[-MAX_RESUMOS:]
 
     return memoria
 
