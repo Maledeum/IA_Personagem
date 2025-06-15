@@ -24,8 +24,10 @@ VECTOR_DIR_NAME = "vectors"
 EPISODIC_VECTOR_FILE = "episodic_vectors.json"
 HISTORICAL_VECTOR_FILE = "historical_vectors.json"
 RAW_VECTOR_FILE = "raw_vectors.json"
+RAW_CHUNK_VECTOR_FILE = "raw_chunk_vectors.json"
 EPISODIC_FAISS_FILE = "episodic_vectors.faiss"
 RAW_FAISS_FILE = "raw_vectors.faiss"
+RAW_CHUNK_FAISS_FILE = "raw_chunks.faiss"
 MAX_RESUMOS = 5
 
 
@@ -33,6 +35,25 @@ def _text_embedding(text, size=32):
     """Return a deterministic embedding list for *text*."""
     digest = hashlib.sha256(text.encode("utf-8")).digest()
     return [b / 255 for b in digest[:size]]
+
+
+def dividir_em_chunks(texto: str, max_tokens: int = 64) -> List[str]:
+    """Divide *texto* em chunks de até *max_tokens* palavras."""
+    import re
+
+    sentencas = re.split(r"(?<=[.!?]) +", texto)
+    chunks = []
+    atual = ""
+    for s in sentencas:
+        if len(atual.split()) + len(s.split()) <= max_tokens:
+            atual = f"{atual} {s}".strip()
+        else:
+            if atual:
+                chunks.append(atual)
+            atual = s
+    if atual:
+        chunks.append(atual.strip())
+    return chunks
 
 
 def init_vector_store(base_dir):
@@ -109,6 +130,19 @@ def add_raw_embedding(base_dir: str, msg_id: int, content: str) -> None:
     _faiss_add_vector(base_dir, RAW_FAISS_FILE, emb, msg_id)
 
 
+def add_raw_chunk_embeddings(base_dir: str, msg_id: int, content: str) -> None:
+    """Store embeddings for each chunk of a raw message."""
+    emb_dir = init_vector_store(base_dir)
+    file_path = os.path.join(emb_dir, RAW_CHUNK_VECTOR_FILE)
+    data = _load_json(file_path, [])
+    for pos, chunk in enumerate(dividir_em_chunks(content)):
+        emb = _text_embedding(chunk)
+        cid = f"{msg_id}_{pos}"
+        data.append({"id": cid, "raw_id": msg_id, "pos": pos, "text": chunk, "embedding": emb})
+        _faiss_add_vector(base_dir, RAW_CHUNK_FAISS_FILE, emb, cid)
+    _save_json(data, file_path)
+
+
 def rebuild_episodic_embeddings(base_dir):
     """Recalculate embeddings for all episodic summaries."""
     emb_dir = init_vector_store(base_dir)
@@ -137,20 +171,37 @@ def rebuild_raw_embeddings(base_dir: str) -> None:
     """Recalculate embeddings for all raw messages."""
     emb_dir = init_vector_store(base_dir)
     file_path = os.path.join(emb_dir, RAW_VECTOR_FILE)
+    chunk_path = os.path.join(emb_dir, RAW_CHUNK_VECTOR_FILE)
     meta = _load_meta(base_dir)
     data = []
+    chunk_data = []
     for idx in range(1, meta["last_id"] + 1):
         mensagens = _ler_raw_intervalo(base_dir, idx, idx)
         if mensagens:
             m = mensagens[0]
             data.append({"id": m["id"], "embedding": _text_embedding(m["content"])})
+            for pos, chunk in enumerate(dividir_em_chunks(m["content"])):
+                chunk_data.append({
+                    "id": f"{m['id']}_{pos}",
+                    "raw_id": m["id"],
+                    "pos": pos,
+                    "text": chunk,
+                    "embedding": _text_embedding(chunk),
+                })
     _save_json(data, file_path)
+    _save_json(chunk_data, chunk_path)
     if _HAVE_FAISS:
         index_path, _ = _faiss_paths(base_dir, RAW_FAISS_FILE)
         if os.path.exists(index_path):
             os.remove(index_path)
         for item in data:
             _faiss_add_vector(base_dir, RAW_FAISS_FILE, item["embedding"], item["id"])
+
+        index_path2, _ = _faiss_paths(base_dir, RAW_CHUNK_FAISS_FILE)
+        if os.path.exists(index_path2):
+            os.remove(index_path2)
+        for item in chunk_data:
+            _faiss_add_vector(base_dir, RAW_CHUNK_FAISS_FILE, item["embedding"], item["id"])
 
 
 def _cosine_similarity(a, b):
@@ -195,26 +246,32 @@ def buscar_trechos(query, base_dir, top_n=3):
     raw_vecs = _load_json(raw_vec_file, [])
     raw_map = {r["id"]: r.get("embedding", []) for r in raw_vecs}
 
+    chunk_vec_file = os.path.join(emb_dir, RAW_CHUNK_VECTOR_FILE)
+    chunk_vecs = _load_json(chunk_vec_file, [])
+    chunk_map = {}
+    for ch in chunk_vecs:
+        chunk_map.setdefault(ch.get("raw_id"), []).append(ch)
+
     trechos = []
     for eid in top_ids:
         if eid not in id_range:
             continue
         start_id, end_id = id_range[eid]
         mensagens = _ler_raw_intervalo(base_dir, start_id, end_id)
-        best_msg = None
+        best_chunk = None
+        best_role = "user"
         best_sim = -1.0
         for msg in mensagens:
-            emb = raw_map.get(msg["id"])
-            if not emb:
-                continue
-            sim = _cosine_similarity(query_emb, emb)
-            if sim > best_sim:
-                best_sim = sim
-                best_msg = msg
-        if best_msg:
-            trechos.append(
-                f"{'Usuário' if best_msg['role']=='user' else 'IA'}: {best_msg['content']}"
-            )
+            for ch in chunk_map.get(msg["id"], []):
+                emb = ch.get("embedding")
+                sim = _cosine_similarity(query_emb, emb)
+                if sim > best_sim:
+                    best_sim = sim
+                    best_chunk = ch
+                    best_role = msg["role"]
+        if best_chunk:
+            prefix = "Usuário" if best_role == "user" else "IA"
+            trechos.append(f"{prefix}: {best_chunk['text']}")
     return trechos
 
 def carregar_memoria(arquivo=DEFAULT_MEMORY_FILE):
@@ -305,7 +362,7 @@ def init_hierarchical(base_dir):
         _save_meta({"current_raw": 1, "count_in_raw": 0, "last_id": 0}, base_dir)
     init_vector_store(base_dir)
     # create empty vector files
-    for fname in [EPISODIC_VECTOR_FILE, RAW_VECTOR_FILE]:
+    for fname in [EPISODIC_VECTOR_FILE, RAW_VECTOR_FILE, RAW_CHUNK_VECTOR_FILE]:
         path = os.path.join(base_dir, VECTOR_DIR_NAME, fname)
         if not os.path.exists(path):
             _save_json([], path)
@@ -328,6 +385,7 @@ def registrar_raw(role, content, base_dir):
     raw_file = os.path.join(base_dir, "raw", f"raw_{meta['current_raw']}.jsonl")
     _append_jsonl(raw_file, {"id": msg_id, "role": role, "content": content})
     add_raw_embedding(base_dir, msg_id, content)
+    add_raw_chunk_embeddings(base_dir, msg_id, content)
     meta["last_id"] = msg_id
     meta["count_in_raw"] += 1
     if meta["count_in_raw"] >= RAW_ROTATE:
@@ -375,6 +433,7 @@ def remover_ultimas_raw(base_dir, n=1):
                 meta["count_in_raw"] = 0
 
     _save_meta(meta, base_dir)
+    rebuild_raw_embeddings(base_dir)
 
 
 def _ler_raw_intervalo(base_dir, start_id, end_id):
