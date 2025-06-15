@@ -72,7 +72,7 @@ def conversar(pergunta):
 
     mensagens = [{"role": "system", "content": system_prompt + "\n\n" + contexto_memoria}]
     memoria["contador_interacoes"] += 1
-    memoria["conversa"] = memoria.get("conversa", [])[-20:]
+    memoria["conversa"] = memoria.get("conversa", [])[-10:]
     mensagens.extend(memoria["conversa"])
     mensagens.append({"role": "user", "content": pergunta})
 

@@ -218,7 +218,7 @@ def _cosine_similarity(a, b):
     return dot / (na * nb)
 
 
-def buscar_trechos(query, base_dir, top_n=3):
+def buscar_trechos(query, base_dir, top_n=6):
     """Retorna os *top_n* trechos mais similares ao *query*."""
     query_emb = _text_embedding(query)
 
