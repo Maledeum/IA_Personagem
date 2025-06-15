@@ -11,6 +11,7 @@ from core.memoria import (
     gerar_resumo_branch,
     gerar_resumo_global,
     buscar_trechos,
+    MAX_RESUMOS,
 )
 from core.contexto import montar_contexto
 from core.resumo import (
@@ -111,9 +112,11 @@ def conversar(pergunta):
     resumo_ep = gerar_resumo_episodio(memory_base, resumo_episodio)
     if resumo_ep:
         memoria["resumo_breve"].append(resumo_ep)
+        memoria["resumo_breve"] = memoria["resumo_breve"][-MAX_RESUMOS:]
     resumo_br = gerar_resumo_branch(memory_base, resumo_branch)
     if resumo_br:
         memoria["resumo_antigo"].append(resumo_br)
+        memoria["resumo_antigo"] = memoria["resumo_antigo"][-MAX_RESUMOS:]
     gerar_resumo_global(memory_base, resumo_global)
 
     salvar_memoria(memoria, memory_file)
