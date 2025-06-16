@@ -32,6 +32,14 @@ LM_API_URL = "http://localhost:1234/v1/chat/completions"
 with open(DEFAULT_PERSONALITY_FILE, "r", encoding="utf-8") as f:
     system_prompt = f.read()
 
+# Modo de depuração controlado por variável de ambiente
+DEBUG_CHAT = os.getenv("DEBUG_CHAT") == "1"
+
+def set_debug(flag: bool) -> None:
+    """Ativa ou desativa logs de depuração do chat."""
+    global DEBUG_CHAT
+    DEBUG_CHAT = flag
+
 # Variáveis globais de memória
 memory_base = os.path.join("memory", "default")
 memory_file = os.path.join(memory_base, "working_memory.json")
@@ -90,6 +98,10 @@ def conversar(pergunta):
         "max_tokens": 3800,
         "stream": True
     }
+
+    if DEBUG_CHAT:
+        print("\n[DEBUG] Mensagens enviadas:")
+        print(json.dumps(mensagens, ensure_ascii=False, indent=2))
 
     resposta = ""
     try:
