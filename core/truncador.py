@@ -23,7 +23,7 @@ def _contar_tokens_mensagens(mensagens: List[Dict[str, str]]) -> int:
     return total
 
 
-def limitar_mensagens_com_prompt(prompt: str, conversa: List[Dict[str, str]], pergunta: str, limite: int = 3800) -> List[Dict[str, str]]:
+def limitar_mensagens_com_prompt(prompt: str, conversa: List[Dict[str, str]], pergunta: str, limite: int = 3000) -> List[Dict[str, str]]:
     """Monta lista de mensagens respeitando o *limite* de tokens.
 
     - ``prompt`` será enviado como a primeira mensagem do sistema.

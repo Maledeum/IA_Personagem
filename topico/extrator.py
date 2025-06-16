@@ -19,7 +19,7 @@ stop_words = set(stopwords.words("portuguese"))
 
 # === Configurações ===
 DECAY = 1       # quanto decresce o peso a cada nova interação
-MAX_TOPICOS = 5
+MAX_TOPICOS = 10
 MIN_PESO = 1    # elimina tópicos com peso abaixo disso
 
 # === Extração por frequência e posição ===
