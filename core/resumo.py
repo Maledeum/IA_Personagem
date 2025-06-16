@@ -3,7 +3,7 @@ import requests
 LM_API_URL = "http://localhost:1234/v1/chat/completions"
 
 def gerar_resumo_com_ia(trechos):
-    prompt_resumo = "Resuma brevemente os principais tópicos da conversa a seguir:\n\n"
+    prompt_resumo = "Resuma brevemente os principais tópicos da conversa a seguir e evite verbalizar muito:\n\n"
     texto_completo = prompt_resumo + "\n".join(trechos)
 
     payload = {
@@ -35,7 +35,7 @@ def gerar_resumo_custom(trechos, prompt_resumo):
 
 
 def resumo_episodio(trechos):
-    prompt = "Resuma em exatamente 7 tópicos os eventos a seguir:\n\n"
+    prompt = "Resuma em exatamente 7 tópicos os eventos a seguir, evite verbalizar e redundancia:\n\n"
     return gerar_resumo_custom(trechos, prompt)
 
 

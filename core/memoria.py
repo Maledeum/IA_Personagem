@@ -28,7 +28,7 @@ RAW_CHUNK_VECTOR_FILE = "raw_chunk_vectors.json"
 EPISODIC_FAISS_FILE = "episodic_vectors.faiss"
 RAW_FAISS_FILE = "raw_vectors.faiss"
 RAW_CHUNK_FAISS_FILE = "raw_chunks.faiss"
-MAX_RESUMOS = 5
+MAX_RESUMOS = 3
 
 
 def _text_embedding(text, size=32):
