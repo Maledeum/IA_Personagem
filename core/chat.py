@@ -68,6 +68,8 @@ def conversar(pergunta):
     global memoria, ultima_busca
 
     pergunta_ctx = contextualizar_pergunta(pergunta, memoria)
+    # Usamos a pergunta enriquecida com tópicos apenas na busca por trechos
+    # semelhantes. A pergunta original é enviada ao modelo de linguagem.
     ultima_busca = buscar_trechos(pergunta_ctx, memory_base)
 
     contexto_memoria = montar_contexto(memoria)
@@ -78,7 +80,7 @@ def conversar(pergunta):
     mensagens = limitar_mensagens_com_prompt(
         system_prompt + "\n\n" + contexto_memoria,
         memoria.get("conversa", []),
-        pergunta_ctx,
+        pergunta,
     )
 
     payload = {
