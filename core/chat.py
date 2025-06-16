@@ -22,6 +22,7 @@ from core.resumo import (
     resumo_branch,
     resumo_global,
 )
+from core.truncador import limitar_mensagens_com_prompt
 
 # Caminho da personalidade base
 DEFAULT_PERSONALITY_FILE = "config/personality.txt"
@@ -73,17 +74,18 @@ def conversar(pergunta):
     if ultima_busca:
         contexto_memoria += "\nTrechos relevantes:\n" + "\n----\n".join(ultima_busca)
 
-    mensagens = [{"role": "system", "content": system_prompt + "\n\n" + contexto_memoria}]
     memoria["contador_interacoes"] += 1
-    memoria["conversa"] = memoria.get("conversa", [])[-10:]
-    mensagens.extend(memoria["conversa"])
-    mensagens.append({"role": "user", "content": pergunta_ctx})
+    mensagens = limitar_mensagens_com_prompt(
+        system_prompt + "\n\n" + contexto_memoria,
+        memoria.get("conversa", []),
+        pergunta_ctx,
+    )
 
     payload = {
         "model": "local-model",
         "messages": mensagens,
         "temperature": 0.7,
-        "max_tokens": 512,
+        "max_tokens": 3800,
         "stream": True
     }
 
