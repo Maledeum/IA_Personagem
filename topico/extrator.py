@@ -2,8 +2,15 @@ import re
 import nltk
 from nltk.corpus import stopwords
 
-nltk.download("punkt", quiet=True)
-nltk.download("stopwords", quiet=True)
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
+
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords')
 
 stop_words = set(stopwords.words("portuguese"))
 

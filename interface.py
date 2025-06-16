@@ -2,6 +2,7 @@ import gradio as gr
 import os
 import json
 import time
+import nltk
 import psutil
 import core.chat as chat
 from core.memoria import (
@@ -9,6 +10,7 @@ from core.memoria import (
     remover_ultimas_raw,
     resetar_memoria_personagem,
 )
+
 try:
     from transformers import GPT2TokenizerFast
     tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", local_files_only=True)
