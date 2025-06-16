@@ -13,6 +13,12 @@ Instale as dependências com:
 pip install -r requirements.txt
 ```
 
+Também é preciso instalar os corpora `punkt` e `stopwords` do NLTK:
+
+```bash
+python -m nltk.downloader punkt stopwords
+```
+
 ## Estrutura
 
 - `core/` – módulos principais de chat, memória e contexto
