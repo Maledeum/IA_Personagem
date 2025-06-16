@@ -100,10 +100,13 @@ def conversar(pergunta):
                         token = data["choices"][0]["delta"].get("content", "")
                         resposta += token
                         yield token
-                    except:
+                    except Exception as e:
+                        print(f"Erro ao processar linha da resposta: {e}")
                         continue
-    except:
-        yield "[Erro: não foi possível gerar resposta]"
+    except Exception as e:
+        erro_msg = f"[Erro: não foi possível gerar resposta: {e}]"
+        print(erro_msg)
+        yield erro_msg
         return
 
     # Salva a resposta completa e registra em memória hierárquica
