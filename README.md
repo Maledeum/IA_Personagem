@@ -13,11 +13,15 @@ Instale as dependências com:
 pip install -r requirements.txt
 ```
 
-Também é preciso instalar os corpora `punkt` e `stopwords` do NLTK:
+Os corpora `punkt` e `stopwords` do NLTK são necessários. Você pode
+instalá-los manualmente com:
 
 ```bash
 python -m nltk.downloader punkt stopwords
 ```
+
+Este passo é opcional, pois `topico/extrator.py` faz o download
+automaticamente caso os recursos não estejam presentes.
 
 ## Estrutura
 
