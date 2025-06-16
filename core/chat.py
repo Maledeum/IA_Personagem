@@ -14,6 +14,8 @@ from core.memoria import (
     MAX_RESUMOS,
 )
 from core.contexto import montar_contexto
+from topico.extrator import atualizar_topicos_ativos
+from topico.contextualizador import contextualizar_pergunta
 from core.resumo import (
     gerar_resumo_com_ia,
     resumo_episodio,
@@ -64,7 +66,8 @@ def carregar_personalidade(arquivo_json):
 def conversar(pergunta):
     global memoria, ultima_busca
 
-    ultima_busca = buscar_trechos(pergunta, memory_base)
+    pergunta_ctx = contextualizar_pergunta(pergunta, memoria)
+    ultima_busca = buscar_trechos(pergunta_ctx, memory_base)
 
     contexto_memoria = montar_contexto(memoria)
     if ultima_busca:
@@ -74,7 +77,7 @@ def conversar(pergunta):
     memoria["contador_interacoes"] += 1
     memoria["conversa"] = memoria.get("conversa", [])[-10:]
     mensagens.extend(memoria["conversa"])
-    mensagens.append({"role": "user", "content": pergunta})
+    mensagens.append({"role": "user", "content": pergunta_ctx})
 
     payload = {
         "model": "local-model",
@@ -115,6 +118,7 @@ def conversar(pergunta):
         memoria["resumo_breve"] = memoria["resumo_breve"][-MAX_RESUMOS:]
     gerar_resumo_branch(memory_base, resumo_branch)
     gerar_resumo_global(memory_base, resumo_global)
+    atualizar_topicos_ativos(memoria, origem="user")
 
     salvar_memoria(memoria, memory_file)
     return resposta
