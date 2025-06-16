@@ -1,9 +1,19 @@
 import re
 import nltk
 from nltk.corpus import stopwords
+from nltk.data import find
 
-nltk.download("punkt", quiet=True)
-nltk.download("stopwords", quiet=True)
+
+def _ensure_resource(path: str, name: str) -> None:
+    """Baixa o recurso do NLTK se ele não estiver disponível."""
+    try:
+        find(path)
+    except LookupError:
+        nltk.download(name, quiet=True)
+
+
+_ensure_resource("tokenizers/punkt", "punkt")
+_ensure_resource("corpora/stopwords", "stopwords")
 
 stop_words = set(stopwords.words("portuguese"))
 
