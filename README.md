@@ -1,42 +1,49 @@
 # IA_Personagem
 
-IA_Personagem é uma plataforma de chat em que cada personagem é uma IA com personalidade própria. O sistema mantém memória hierárquica da conversa e pode ser utilizado via terminal ou interface web (Gradio).
+IA_Personagem é uma aplicação de chat com múltiplas personalidades e memória hierárquica. Cada personagem possui um prompt próprio e guarda o histórico das conversas para gerar resumos automáticos. O sistema funciona tanto via terminal quanto por uma interface web em Gradio.
 
-## Requisitos
+## Principais funcionalidades
 
-- Python 3.10+
-- Dependências: `requests`, `gradio`, `psutil`, `transformers`, `faiss-cpu`, `nltk`
+- **Personalidades customizadas** em `personalidades/*.json`.
+- **Memória hierárquica** com arquivos brutos, resumos de episódios e históricos.
+- **Armazenamento de embeddings** para busca de trechos relevantes (RAG).
+- **Interface web** opcional com Gradio (`interface.py`).
+- **Uso pelo terminal** através de `main.py`.
+- **Scripts utilitários** em `tools/` para depuração e reset de memória.
 
-Instale as dependências com:
+## Como o código funciona
+
+1. **Chat** (`core/chat.py`)
+   - Monta o prompt combinando o prompt do sistema, resumos e histórico.
+   - Envia as mensagens para um modelo em `http://localhost:1234/v1/chat/completions`.
+   - Registra as respostas na memória e atualiza os resumos.
+2. **Memória** (`core/memoria.py`)
+   - Guarda mensagens brutas em arquivos `memory/<persona>/raw/`.
+   - Cria resumos periódicos (episódios, branches e global).
+   - Converte resumos e mensagens em embeddings determinísticos (opcionalmente com FAISS).
+3. **Contexto e tópicos** (`core/contexto.py`, `topico/`)
+   - Extrai tópicos recentes para enriquecer perguntas.
+   - Constrói a lista de mensagens que será enviada ao modelo.
+4. **Interfaces**
+   - `main.py` executa o chat no terminal.
+   - `interface.py` oferece uma interface web com histórico e ações de gerenciamento.
+
+## Instalação
+
+Requer Python 3.10+. Instale as dependências:
 
 ```bash
 pip install -r requirements.txt
-```
-
-Também é preciso instalar os corpora `punkt` e `stopwords` do NLTK:
-
-```bash
 python -m nltk.downloader punkt stopwords
 ```
 
-## Estrutura
-
-- `core/` – módulos principais de chat, memória e contexto
-- `personalidades/` – arquivos JSON com as personalidades disponíveis
-- `interface.py` – versão com interface web (Gradio)
-- `main.py` – versão para uso no terminal
-- `tools/` – scripts auxiliares para depuração e testes (inclui `reset_memory.py` para limpar a memória de um personagem)
-
-O arquivo de memória agora é salvo em `memory/<personagem>.json` e será criado automaticamente na primeira execução de cada personalidade.
-
-## Executando
+## Execução rápida
 
 ### Terminal
 
 ```bash
-python main.py nome_da_personalidade
+python main.py aria  # escolha a personalidade desejada
 ```
-Substitua `nome_da_personalidade` pelo arquivo desejado em `personalidades/` (ex.: `aria` ou `beto`).
 
 ### Interface Web
 
@@ -44,33 +51,17 @@ Substitua `nome_da_personalidade` pelo arquivo desejado em `personalidades/` (ex
 python interface.py
 ```
 
-A aplicação abrirá um servidor local com chat em tempo real.
-
 ### Resetar memória
 
-Para apagar todos os arquivos de memória de um personagem e começar do zero:
-
 ```bash
-python tools/reset_memory.py nome_da_personalidade
+python tools/reset_memory.py aria
 ```
 
-### Vetores de resumo
+## Verificação rápida
 
-Os resumos gerados são convertidos em embeddings determinísticos e
-armazenados em `memory/<personagem>/vectors/`. Existem dois arquivos:
-`episodic_vectors.json` e `historical_vectors.json`, cada um contendo o
-`id` do resumo e seu vetor. Com o `id` é possível consultar o intervalo
-de mensagens correspondentes nos arquivos `raw`, permitindo recuperar a
-memória original.
-
-
-## Verificação Rápida
-
-Para verificar a integridade do código Python:
+Para garantir que os arquivos Python estão corretos:
 
 ```bash
-python -m py_compile interface.py main.py core/chat.py core/memoria.py core/contexto.py core/resumo.py tools/debug_tokens.py tools/performance_test.py "tools/teste local.py"
+python -m py_compile interface.py main.py core/chat.py core/memoria.py core/contexto.py core/resumo.py tools/debug_tokens.py tools/performance_test.py tools/teste_local.py
 ```
-
-Os scripts em `tools/` dependem da biblioteca `transformers` para calcular tokens. Caso ela não esteja instalada, esses scripts exibirão um erro.
 

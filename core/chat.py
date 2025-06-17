@@ -80,7 +80,6 @@ def carregar_personalidade(arquivo_json):
 def conversar(pergunta):
     global memoria, ultima_busca
 
-    DEBUG_CHAT = 1
 
     pergunta_ctx = contextualizar_pergunta(pergunta, memoria)
     # Usamos a pergunta enriquecida com tópicos apenas na busca por trechos
