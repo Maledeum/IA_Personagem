@@ -30,15 +30,8 @@ def limitar_mensagens_com_prompt(
     limite: int = 3000,
     return_metrics: bool = False,
 ) -> Tuple[List[Dict[str, str]], Optional[Dict[str, int]]]:
-    """Monta lista de mensagens respeitando o *limite* de tokens.
+    """Mantida para compatibilidade: monta mensagens com um único ``prompt``."""
 
-    - ``prompt`` será enviado como a primeira mensagem do sistema.
-    - ``conversa`` é a lista histórica de mensagens no formato ``{"role": ..., "content": ...}``.
-    - ``pergunta`` é a pergunta atual do usuário.
-
-    As mensagens mais antigas são descartadas até que o total estimado de tokens
-    fique abaixo do ``limite``.
-    """
     mensagens = [{"role": "system", "content": prompt}]
     historico = list(conversa)
     historico.append({"role": "user", "content": pergunta})
@@ -61,5 +54,40 @@ def limitar_mensagens_com_prompt(
             "tokens_final": tokens_final,
             "prompt_truncado": tokens_prompt > limite,
             "conversa_truncada": tokens_final < tokens_original,
+        }
+    return mensagens, metrics
+
+
+def limitar_mensagens(
+    mensagens: List[Dict[str, str]],
+    limite: int = 3000,
+    return_metrics: bool = False,
+) -> Tuple[List[Dict[str, str]], Optional[Dict[str, int]]]:
+    """Limita o contexto removendo apenas mensagens da conversa."""
+
+    tokens_original = _contar_tokens_mensagens(mensagens)
+
+    # mensagens da conversa (exceto a última pergunta) possuem role user/assistant
+    conversacao_idx = [
+        i
+        for i, m in enumerate(mensagens[:-1])
+        if m.get("role") in {"user", "assistant"}
+    ]
+
+    while (
+        conversacao_idx
+        and _contar_tokens_mensagens(mensagens) > limite
+    ):
+        idx = conversacao_idx.pop(0)
+        mensagens.pop(idx)
+        conversacao_idx = [i - 1 if i > idx else i for i in conversacao_idx]
+
+    metrics = None
+    if return_metrics:
+        tokens_final = _contar_tokens_mensagens(mensagens)
+        metrics = {
+            "limite": limite,
+            "tokens_original": tokens_original,
+            "tokens_final": tokens_final,
         }
     return mensagens, metrics
