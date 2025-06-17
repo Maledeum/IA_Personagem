@@ -5,6 +5,9 @@ import warnings
 import shutil
 import hashlib
 from typing import List, Tuple
+import re
+
+SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?]) +")
 
 try:
     import faiss  # type: ignore
@@ -39,20 +42,22 @@ def _text_embedding(text, size=32):
 
 def dividir_em_chunks(texto: str, max_tokens: int = 64) -> List[str]:
     """Divide *texto* em chunks de até *max_tokens* palavras."""
-    import re
-
-    sentencas = re.split(r"(?<=[.!?]) +", texto)
+    sentencas = SENTENCE_SPLIT_RE.split(texto)
     chunks = []
-    atual = ""
+    atual: List[str] = []
+    count = 0
     for s in sentencas:
-        if len(atual.split()) + len(s.split()) <= max_tokens:
-            atual = f"{atual} {s}".strip()
+        palavras = s.split()
+        if count + len(palavras) <= max_tokens:
+            atual.extend(palavras)
+            count += len(palavras)
         else:
             if atual:
-                chunks.append(atual)
-            atual = s
+                chunks.append(" ".join(atual))
+            atual = palavras
+            count = len(palavras)
     if atual:
-        chunks.append(atual.strip())
+        chunks.append(" ".join(atual))
     return chunks
 
 

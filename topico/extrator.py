@@ -15,6 +15,7 @@ def _ensure_resource(path: str, name: str) -> None:
 _ensure_resource("tokenizers/punkt", "punkt")
 _ensure_resource("corpora/stopwords", "stopwords")
 
+_CLEAN_RE = re.compile(r"[^\w\s]")
 stop_words = set(stopwords.words("portuguese"))
 
 # === Configurações ===
@@ -25,7 +26,7 @@ MIN_PESO = 1    # elimina tópicos com peso abaixo disso
 # === Extração por frequência e posição ===
 def extrair_topicos(texto: str, max_topicos: int = 3):
     """Retorna lista com os *max_topicos* mais relevantes."""
-    texto_limpo = re.sub(r"[^\w\s]", "", texto.lower())
+    texto_limpo = _CLEAN_RE.sub("", texto.lower())
     palavras = nltk.word_tokenize(texto_limpo)
     palavras_relevantes = [p for p in palavras if p not in stop_words and len(p) > 3]
 
