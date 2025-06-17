@@ -1,6 +1,6 @@
 """Utilitários para truncar conversas conforme limite de tokens."""
 
-from typing import List, Dict
+from typing import List, Dict, Tuple, Optional
 
 
 def estimar_tokens(texto: str) -> int:
@@ -23,7 +23,13 @@ def _contar_tokens_mensagens(mensagens: List[Dict[str, str]]) -> int:
     return total
 
 
-def limitar_mensagens_com_prompt(prompt: str, conversa: List[Dict[str, str]], pergunta: str, limite: int = 3000) -> List[Dict[str, str]]:
+def limitar_mensagens_com_prompt(
+    prompt: str,
+    conversa: List[Dict[str, str]],
+    pergunta: str,
+    limite: int = 3000,
+    return_metrics: bool = False,
+) -> Tuple[List[Dict[str, str]], Optional[Dict[str, int]]]:
     """Monta lista de mensagens respeitando o *limite* de tokens.
 
     - ``prompt`` será enviado como a primeira mensagem do sistema.
@@ -37,8 +43,23 @@ def limitar_mensagens_com_prompt(prompt: str, conversa: List[Dict[str, str]], pe
     historico = list(conversa)
     historico.append({"role": "user", "content": pergunta})
 
+    tokens_prompt = estimar_tokens(prompt)
+    tokens_original = tokens_prompt + _contar_tokens_mensagens(historico)
+
     while historico and _contar_tokens_mensagens(mensagens + historico) > limite:
         historico.pop(0)
 
     mensagens.extend(historico)
-    return mensagens
+
+    metrics = None
+    if return_metrics:
+        tokens_final = _contar_tokens_mensagens(mensagens)
+        metrics = {
+            "limite": limite,
+            "tokens_prompt": tokens_prompt,
+            "tokens_original": tokens_original,
+            "tokens_final": tokens_final,
+            "prompt_truncado": tokens_prompt > limite,
+            "conversa_truncada": tokens_final < tokens_original,
+        }
+    return mensagens, metrics

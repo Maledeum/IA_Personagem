@@ -84,6 +84,16 @@ def responder(pergunta, historico):
         f"💾 RAM: {ram_usage_mb:.1f} MB"
     )
 
+    ctx = chat.get_ultima_metricas()
+    if ctx:
+        metricas += (
+            f"\n📄 Tokens contexto: {ctx['tokens_final']}/{ctx['limite']}"
+        )
+        if ctx.get('prompt_truncado'):
+            metricas += "\n⚠️ Prompt do sistema truncado"
+        elif ctx.get('conversa_truncada'):
+            metricas += "\n⚠️ Histórico truncado"
+
     trechos = chat.get_ultima_busca()
     trechos_str = "\n\n----\n\n".join(trechos)
 
