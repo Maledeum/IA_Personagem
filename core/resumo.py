@@ -15,8 +15,13 @@ def gerar_resumo_com_ia(trechos):
         "max_tokens": 250
     }
 
-    response = requests.post(LM_API_URL, json=payload)
-    resposta = response.json()["choices"][0]["message"]["content"].strip()
+    try:
+        response = requests.post(LM_API_URL, json=payload, timeout=30)
+        data = response.json()
+        resposta = data["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"Erro ao gerar resumo: {e}")
+        resposta = ""
     return resposta
 
 
@@ -30,8 +35,13 @@ def gerar_resumo_custom(trechos, prompt_resumo):
         "temperature": 0.5,
         "max_tokens": 250
     }
-    response = requests.post(LM_API_URL, json=payload)
-    return response.json()["choices"][0]["message"]["content"].strip()
+    try:
+        response = requests.post(LM_API_URL, json=payload, timeout=30)
+        data = response.json()
+        return data["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"Erro ao gerar resumo customizado: {e}")
+        return ""
 
 
 def resumo_episodio(trechos):
