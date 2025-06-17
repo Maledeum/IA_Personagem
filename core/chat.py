@@ -13,7 +13,7 @@ from core.memoria import (
     buscar_trechos,
     MAX_RESUMOS,
 )
-from core.contexto import montar_contexto
+from core.contexto import montar_prompt
 from topico.extrator import atualizar_topicos_ativos
 from topico.contextualizador import contextualizar_pergunta
 from core.resumo import (
@@ -22,7 +22,7 @@ from core.resumo import (
     resumo_branch,
     resumo_global,
 )
-from core.truncador import limitar_mensagens_com_prompt
+from core.truncador import limitar_mensagens
 
 # Caminho da personalidade base
 DEFAULT_PERSONALITY_FILE = "config/personality.txt"
@@ -87,17 +87,9 @@ def conversar(pergunta):
     # semelhantes. A pergunta original é enviada ao modelo de linguagem.
     ultima_busca = buscar_trechos(pergunta_ctx, memory_base)
 
-    contexto_memoria = montar_contexto(memoria)
-    if ultima_busca:
-        contexto_memoria += "\nTrechos relevantes:\n" + "\n----\n".join(ultima_busca)
-
     memoria["contador_interacoes"] += 1
-    mensagens, ultima_metricas_local = limitar_mensagens_com_prompt(
-        system_prompt + "\n\n" + contexto_memoria,
-        memoria.get("conversa", []),
-        pergunta,
-        return_metrics=True,
-    )
+    mensagens = montar_prompt(system_prompt, pergunta, memoria, rag_trechos=ultima_busca)
+    mensagens, ultima_metricas_local = limitar_mensagens(mensagens, return_metrics=True)
     global ultima_metricas
     ultima_metricas = ultima_metricas_local or {}
 
