@@ -111,8 +111,10 @@ def conversar(pergunta):
             for linha in response.iter_lines():
                 if linha:
                     try:
-                        linha = linha.decode("utf-8").replace("data: ", "")
-                        if linha.strip() == "[DONE]":
+                        linha = linha.decode("utf-8").strip()
+                        if linha.startswith("data:"):
+                            linha = linha[len("data:"):].strip()
+                        if linha == "[DONE]":
                             break
                         data = json.loads(linha)
                         token = data["choices"][0]["delta"].get("content", "")
