@@ -48,10 +48,15 @@ memoria = carregar_memoria(memory_file)
 
 # Últimos trechos recuperados pelo RAG
 ultima_busca = []
+ultima_metricas = {}
 
 def get_ultima_busca():
     """Retorna os trechos recuperados mais recentemente."""
     return ultima_busca
+
+def get_ultima_metricas():
+    """Retorna as métricas de tokens da última chamada."""
+    return ultima_metricas
 
 def set_system_prompt(novo_prompt):
     global system_prompt
@@ -87,11 +92,14 @@ def conversar(pergunta):
         contexto_memoria += "\nTrechos relevantes:\n" + "\n----\n".join(ultima_busca)
 
     memoria["contador_interacoes"] += 1
-    mensagens = limitar_mensagens_com_prompt(
+    mensagens, ultima_metricas_local = limitar_mensagens_com_prompt(
         system_prompt + "\n\n" + contexto_memoria,
         memoria.get("conversa", []),
         pergunta,
+        return_metrics=True,
     )
+    global ultima_metricas
+    ultima_metricas = ultima_metricas_local or {}
 
     payload = {
         "model": "local-model",
